@@ -121,7 +121,7 @@ Telegram-действия происходят только в пунктах:
 2. Доступные username
 3. Уже проверенные username
 4. Использованные username
-5. РўРѕРї username РїРѕ score
+5. Топ username по score
 6. Username из последнего батча
 7. Не проверялись в Telegram
 8. Занятые/невалидные
@@ -173,7 +173,7 @@ logs/logs.txt
 
 ## Важные файлы
 
-- `main.py` - CLI Рё РѕСЃРЅРѕРІРЅРѕР№ workflow.
+- `main.py` - CLI и основной workflow.
 - `llm_generator.py` - генерация и парсинг LLM.
 - `llm_evaluator.py` - оценка и парсинг LLM.
 - `telegram_client.py` - Telegram API.

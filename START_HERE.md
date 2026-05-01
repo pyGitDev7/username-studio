@@ -104,7 +104,7 @@ TELEGRAM_PHONE=
 2. Доступные username
 3. Уже проверенные username
 4. Использованные username
-5. РўРѕРї username РїРѕ score
+5. Топ username по score
 6. Username из последнего батча
 7. Не проверялись в Telegram
 8. Занятые/невалидные

@@ -148,7 +148,7 @@ invalid
 error
 ```
 
-## РћСЃРЅРѕРІРЅРѕР№ workflow
+## Основной workflow
 
 ```text
 1. Генерация
