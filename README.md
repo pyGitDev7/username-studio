@@ -25,6 +25,7 @@
 - [Установка вручную](#установка-вручную)
 - [Настройка `.env`](#настройка-env)
 - [Режимы запуска](#режимы-запуска)
+- [Тесты и CI](#тесты-и-ci)
 - [Как устроен workflow](#как-устроен-workflow)
 - [Основной Telegram-аккаунт для создания](#основной-telegram-аккаунт-для-создания)
 - [Мульти-аккаунты Telegram](#мульти-аккаунты-telegram)
@@ -47,6 +48,7 @@
 | SQLite-учет | Хранит batch, score, статусы, проверки и использованные username. |
 | Web-интерфейс | Открывает локальную dashboard-страницу в браузере. |
 | CLI-режим | Сохраняет старое консольное меню для работы из терминала. |
+| Тесты и CI | Проверяет фильтры, SQLite storage, аккаунты проверки и web guards без реальной сети. |
 | Логи | Пишет подробный лог в `logs/logs.txt`. |
 
 Типы генерации:
@@ -114,6 +116,7 @@ telethon
 requests
 Unidecode
 python-dotenv
+pytest
 ```
 
 ## Настройка `.env`
@@ -183,6 +186,19 @@ http://127.0.0.1:8080
 ```powershell
 python main.py --host 127.0.0.1 --port 8090
 ```
+
+## Тесты и CI
+
+Локальная проверка проекта:
+
+```powershell
+python -m compileall .
+pytest -q
+```
+
+Тесты лежат в `tests/` и не подключаются к реальному Telegram: Telegram/Telethon-действия мокируются, SQLite создаётся во временных папках через `tmp_path`, а web guard-функции проверяются через `monkeypatch`.
+
+GitHub Actions workflow находится в `.github/workflows/ci.yml`. Он запускается на `push` и `pull_request`, ставит зависимости из `requirements.txt`, выполняет `python -m compileall .` и `pytest -q`.
 
 ## Как устроен workflow
 
@@ -350,6 +366,8 @@ username_database.db
 | `telegram_client.py` | Telethon-проверки и создание каналов. |
 | `account_manager.py` | Мульти-аккаунты Telegram, авторизация, статусы и cooldown. |
 | `storage.py` | SQLite-схема, миграции, записи, статистика. |
+| `tests/` | Pytest-тесты без реального Telegram, `.env` и рабочей базы. |
+| `.github/workflows/ci.yml` | GitHub Actions проверка compileall + pytest. |
 | `logger.py` | Логи в консоль и `logs/logs.txt`. |
 | `utils.py` | Общие функции нормализации, валидации и helpers. |
 | `requirements.txt` | Python-зависимости. |

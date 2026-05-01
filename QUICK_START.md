@@ -21,6 +21,13 @@ python main.py --no-telegram --dry-run
 python main.py --no-telegram --dry-run --stats
 ```
 
+Проверка проекта без Telegram:
+
+```powershell
+python -m compileall .
+pytest -q
+```
+
 ## Пример 1. Генерация и оценка без Telegram
 
 Создайте `generate_only.py`:
@@ -143,6 +150,8 @@ if __name__ == "__main__":
 | `python main.py` | Полное меню | Только при пунктах 2/3 |
 | `python main.py --no-telegram --dry-run` | Безопасный preview | Нет |
 | `python main.py --no-telegram --dry-run --stats` | Статистика | Нет |
+| `python -m compileall .` | Проверка синтаксиса Python-файлов | Нет |
+| `pytest -q` | Автотесты фильтров, storage, аккаунтов и web guards | Нет |
 | `python generate_only.py` | Генерация/оценка | Нет |
 | `python show_available.py` | Доступные валидные username | Нет |
 
@@ -159,3 +168,7 @@ if __name__ == "__main__":
 ```powershell
 Get-Content logs\logs.txt -Tail 100
 ```
+
+## CI
+
+GitHub Actions workflow `.github/workflows/ci.yml` запускается на `push` и `pull_request`: ставит зависимости, выполняет `python -m compileall .` и `pytest -q`.

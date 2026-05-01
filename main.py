@@ -666,7 +666,10 @@ class UsernameGenerationSystem:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Telegram username generator")
+    parser = argparse.ArgumentParser(
+        description="Telegram username generator",
+        epilog="Проверка проекта: python -m compileall . && pytest -q",
+    )
     parser.add_argument("--no-telegram", action="store_true", help="не подключаться к Telegram")
     parser.add_argument("--dry-run", action="store_true", help="preview-режим без Telegram-действий")
     parser.add_argument("--stats", action="store_true", help="показать общую статистику и выйти")

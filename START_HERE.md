@@ -152,3 +152,12 @@ Get-Content logs\logs.txt -Tail 100
 ```powershell
 python main.py --no-telegram --dry-run --stats
 ```
+
+Проверить код и автотесты:
+
+```powershell
+python -m compileall .
+pytest -q
+```
+
+На GitHub эти проверки запускаются автоматически через `.github/workflows/ci.yml` на `push` и `pull_request`.

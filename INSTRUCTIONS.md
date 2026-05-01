@@ -230,7 +230,11 @@ Get-Content logs\logs.txt -Tail 100
 ## 14. Проверка после изменений
 
 ```powershell
+python -m compileall .
+pytest -q
 python main.py --no-telegram --dry-run --stats
 ```
 
-Если команда прошла, база и импорт основных модулей работают.
+`pytest -q` запускает тесты из `tests/`: username filter, временную SQLite storage, статусы аккаунтов проверки, защиту live-check без active аккаунтов и web guard-функции. Тесты не используют реальный Telegram, `.env`, `sessions/` и рабочую базу.
+
+На GitHub те же проверки запускает workflow `.github/workflows/ci.yml` на `push` и `pull_request`: установка зависимостей, `python -m compileall .`, затем `pytest -q`.

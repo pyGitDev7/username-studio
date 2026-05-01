@@ -79,6 +79,8 @@
 python main.py
 python main.py --no-telegram --dry-run
 python main.py --no-telegram --dry-run --stats
+python -m compileall .
+pytest -q
 ```
 
 ## Изменённые ключевые файлы
@@ -91,6 +93,8 @@ python main.py --no-telegram --dry-run --stats
 - `account_manager.py`
 - `utils.py`
 - `config.py`
+- `tests/`
+- `.github/workflows/ci.yml`
 - документация `.md`
 
 ## База
@@ -113,17 +117,21 @@ sessions/
 ## Проверки, которые должны проходить
 
 ```powershell
+python -m compileall .
+pytest -q
 python main.py --no-telegram --dry-run --stats
 ```
 
 Также проект проверялся на:
 
 - синтаксис всех `.py`;
-- импорты;
+- pytest-тесты без реального Telegram и `.env`;
 - dry-run запуск;
 - парсинг LLM-ответов;
 - фильтрацию username;
 - storage-запросы.
+
+GitHub Actions CI в `.github/workflows/ci.yml` повторяет `compileall` и `pytest` на `push` и `pull_request`.
 
 ## Актуализировано
 
