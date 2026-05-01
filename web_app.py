@@ -1386,6 +1386,8 @@ INDEX_HTML = r"""<!doctype html>
     .sidebar {
       position: sticky;
       top: 0;
+      display: flex;
+      flex-direction: column;
       height: 100vh;
       padding: 22px 14px;
       border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -1463,6 +1465,104 @@ INDEX_HTML = r"""<!doctype html>
       box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
     }
     .nav button.is-active::before { opacity: 1; color: var(--accent); }
+
+    .donation-cta {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: center;
+      min-height: 76px;
+      margin-top: auto;
+      padding: 13px 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.23), rgba(255, 255, 255, 0.02) 38%),
+        linear-gradient(135deg, #ff4d7d 0%, #ff8a3d 46%, #ffd166 100%);
+      color: #190a12;
+      text-decoration: none;
+      box-shadow: 0 18px 34px rgba(255, 77, 125, 0.3);
+      isolation: isolate;
+      transform: translateZ(0);
+      transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+    }
+
+    .donation-cta::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      z-index: 0;
+      background: linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0.72) 42%, transparent 58%);
+      transform: translateX(-135%) skewX(-18deg);
+      animation: donationShine 3.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .donation-cta::after {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.42);
+      border-radius: 6px;
+      pointer-events: none;
+    }
+
+    .donation-cta:hover {
+      filter: saturate(1.06);
+      transform: translateY(-2px);
+      box-shadow: 0 22px 42px rgba(255, 77, 125, 0.42);
+    }
+
+    .donation-cta:focus-visible {
+      outline: 0;
+      box-shadow: var(--focus), 0 22px 42px rgba(255, 77, 125, 0.42);
+    }
+
+    .donation-cta__copy {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .donation-cta__label {
+      color: rgba(25, 10, 18, 0.78);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .donation-cta__title {
+      color: #190a12;
+      font-size: 14px;
+      font-weight: 880;
+      line-height: 1.18;
+    }
+
+    .donation-cta__hint {
+      color: rgba(25, 10, 18, 0.74);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    @keyframes donationShine {
+      0%, 58% { transform: translateX(-135%) skewX(-18deg); }
+      78%, 100% { transform: translateX(135%) skewX(-18deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .donation-cta::before { animation: none; }
+      .donation-cta,
+      .donation-cta:hover {
+        transition: none;
+        transform: none;
+      }
+    }
 
     main {
       min-width: 0;
@@ -1838,6 +1938,10 @@ INDEX_HTML = r"""<!doctype html>
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
       .nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .donation-cta {
+        grid-column: 1 / -1;
+        margin-top: 14px;
+      }
       main { padding: 16px; }
       .section-head { display: block; }
       .stats-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
@@ -1868,6 +1972,13 @@ INDEX_HTML = r"""<!doctype html>
         <button data-tab="channels">Канал</button>
         <button data-tab="logs">Логи</button>
       </nav>
+      <a class="donation-cta" href="https://www.donationalerts.com/r/sattop02" target="_blank" rel="noopener noreferrer" aria-label="Поддержать проект через DonationAlerts">
+        <span class="donation-cta__copy">
+          <span class="donation-cta__label">DonationAlerts</span>
+          <span class="donation-cta__title">Поддержать проект</span>
+          <span class="donation-cta__hint">жми, если Username Studio выручает</span>
+        </span>
+      </a>
     </aside>
 
     <main>
