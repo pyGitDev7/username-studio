@@ -392,47 +392,6 @@ TELEGRAM_PHONE=
 Get-Content logs\logs.txt -Tail 100
 ```
 
-## Публикация на GitHub
-
-Репозиторий можно публиковать только без локальных секретов и данных.
-
-Перед push убедитесь, что в staged files нет:
-
-```text
-.env
-telegram_session.session
-username_database.db
-*.bak
-logs/
-qa_screenshots/
-venv/
-```
-
-В проекте есть helper, который проверяет staged-файлы:
-
-```powershell
-.\publish_to_github.ps1
-```
-
-Коммит и публикация:
-
-```powershell
-.\publish_to_github.ps1 -RepoUrl "https://github.com/sattop/username-studio.git" -Commit -Push
-```
-
-## Текущие настройки по умолчанию
-
-| Настройка | Значение |
-|---|---|
-| Длина username | `5-6` символов |
-| Алфавит username | lowercase latin `[a-z]` |
-| Score threshold | `6.0` |
-| База данных | `username_database.db` |
-| Логи | `logs/logs.txt` |
-| Web host | `127.0.0.1` |
-| Web port | `8080` |
-| Telegram session | `telegram_session.session` |
-
 ## Репозиторий
 
 ```text
