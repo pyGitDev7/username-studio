@@ -193,26 +193,18 @@ class UsernameGenerationSystem:
         logger.info(f"📱 Проверка {len(usernames)} username на Telegram")
 
         try:
-            if self.account_manager.has_accounts():
-                results = await check_batch_with_rotation(
-                    usernames,
-                    self.account_manager,
-                    progress_callback=progress_callback,
+            if not self.account_manager.has_active_accounts():
+                logger.error(
+                    "❌ Для live-проверки нужен активный аккаунт во вкладке Аккаунты. "
+                    "Основной Telegram-аккаунт из .env используется только для создания каналов."
                 )
-            elif not await self.ensure_telegram():
                 return {}
-            elif hasattr(self.telegram_manager, "check_batch_detailed"):
-                results = await self.telegram_manager.check_batch_detailed(usernames, progress_callback=progress_callback)
-            else:
-                bool_results = await self.telegram_manager.check_batch(usernames)
-                results = {
-                    username: {
-                        "available": available,
-                        "status": "available" if available else "checked_taken",
-                        "notes": "",
-                    }
-                    for username, available in bool_results.items()
-                }
+
+            results = await check_batch_with_rotation(
+                usernames,
+                self.account_manager,
+                progress_callback=progress_callback,
+            )
 
             by_username = {item["username"]: item for item in candidates}
             for username, details in results.items():

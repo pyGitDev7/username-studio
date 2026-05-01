@@ -717,6 +717,7 @@ def get_accounts_payload() -> Dict[str, Any]:
         "accounts": manager.list_accounts(),
         "active_account": manager.get_active_account(),
         "has_accounts": manager.has_accounts(),
+        "has_active_accounts": manager.has_active_accounts(),
     }
 
 
@@ -763,10 +764,7 @@ def delete_account_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def require_telegram_authorized() -> Optional[Dict[str, Any]]:
-    if get_account_manager().has_accounts():
-        return None
-
+def require_main_telegram_authorized() -> Optional[Dict[str, Any]]:
     status = get_telegram_auth_status()
     if status.get("authorized") and status.get("ready", True):
         return None
@@ -778,8 +776,28 @@ def require_telegram_authorized() -> Optional[Dict[str, Any]]:
         }
     return {
         "error": "telegram_login_required",
-        "message": "Сначала войдите в Telegram во вкладке Telegram.",
+        "message": "Сначала войдите в основной Telegram-аккаунт для создания каналов.",
         "auth": status,
+    }
+
+
+def require_checker_accounts() -> Optional[Dict[str, Any]]:
+    accounts = get_account_manager().list_accounts()
+    active_accounts = [account for account in accounts if account.get("status") == "active"]
+    if active_accounts:
+        return None
+
+    if accounts:
+        return {
+            "error": "telegram_checker_accounts_unavailable",
+            "message": "Для live-проверки нет активных аккаунтов. Дождитесь cooldown или добавьте аккаунт во вкладке Аккаунты.",
+            "accounts": accounts,
+        }
+
+    return {
+        "error": "telegram_checker_accounts_required",
+        "message": "Live-проверка выполняется только через аккаунты из вкладки Аккаунты. Основной аккаунт используется только для создания каналов.",
+        "accounts": accounts,
     }
 
 
@@ -1201,7 +1219,7 @@ class UsernameDashboardHandler(BaseHTTPRequestHandler):
                     self._send_json({"error": "confirmation_required", "required": "CHECK"}, HTTPStatus.BAD_REQUEST)
                     return
 
-                auth_error = require_telegram_authorized()
+                auth_error = require_checker_accounts()
                 if auth_error:
                     self._send_json(auth_error, HTTPStatus.BAD_REQUEST)
                     return
@@ -1238,7 +1256,7 @@ class UsernameDashboardHandler(BaseHTTPRequestHandler):
                     self._send_json({"error": "confirmation_required", "required": "y", "record": record}, HTTPStatus.BAD_REQUEST)
                     return
 
-                auth_error = require_telegram_authorized()
+                auth_error = require_main_telegram_authorized()
                 if auth_error:
                     self._send_json(auth_error, HTTPStatus.BAD_REQUEST)
                     return
@@ -1969,13 +1987,13 @@ INDEX_HTML = r"""<!doctype html>
         <div class="section-head">
           <div>
             <h2 class="section-title">Telegram-проверка</h2>
-            <div class="section-meta" id="telegramMeta">Preview включен</div>
+            <div class="section-meta" id="telegramMeta">Проверка идет только через аккаунты из вкладки Аккаунты</div>
           </div>
         </div>
         <div class="auth-panel">
           <div class="panel auth-summary">
             <div class="status-line" style="margin:0">
-              <span>Telegram аккаунт</span>
+              <span>Основной аккаунт создания</span>
               <span id="tgAuthBadge" class="badge warn">checking</span>
             </div>
             <div id="tgAuthDetails" class="section-meta">Проверка сессии...</div>
@@ -1983,7 +2001,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
           <div class="panel">
             <div class="status-line" style="margin:0">
-              <span>Telegram API</span>
+              <span>Telegram API основного аккаунта</span>
               <span id="tgConfigBadge" class="badge warn">loading</span>
             </div>
             <div class="auth-actions config-actions">
@@ -1998,11 +2016,11 @@ INDEX_HTML = r"""<!doctype html>
               </label>
               <button class="btn primary" id="tgSaveConfig">Сохранить API</button>
             </div>
-            <div class="section-meta" id="tgConfigMessage" style="margin-top:10px">API ID и HASH нужны до отправки кода Telegram.</div>
+            <div class="section-meta" id="tgConfigMessage" style="margin-top:10px">Этот аккаунт используется только для создания каналов, не для live-проверок.</div>
           </div>
           <div class="panel">
             <div class="status-line" style="margin:0 0 10px">
-              <span>Вход по коду</span>
+              <span>Вход в основной аккаунт</span>
             </div>
             <div class="auth-actions">
               <label>Телефон
@@ -2020,7 +2038,7 @@ INDEX_HTML = r"""<!doctype html>
               <button class="btn" id="tgCancelAuth">Сбросить вход</button>
               <button class="btn danger" id="tgResetSession">Сбросить сессию</button>
             </div>
-            <div class="section-meta" id="tgAuthMessage" style="margin-top:10px">Код и пароль не сохраняются в браузере после отправки.</div>
+            <div class="section-meta" id="tgAuthMessage" style="margin-top:10px">Код и пароль не сохраняются в браузере. Проверка username этим аккаунтом не выполняется.</div>
           </div>
         </div>
         <div class="toolbar">
@@ -2064,7 +2082,7 @@ INDEX_HTML = r"""<!doctype html>
         <div class="section-head">
           <div>
             <h2 class="section-title">Аккаунты</h2>
-            <div class="section-meta" id="accountsMeta">Мульти-аккаунты для ротации live-проверок</div>
+            <div class="section-meta" id="accountsMeta">Аккаунты только для ротации live-проверок</div>
           </div>
           <button class="btn primary" id="accountAddBtn">+ Добавить</button>
         </div>
@@ -2117,7 +2135,7 @@ INDEX_HTML = r"""<!doctype html>
         <div class="section-head">
           <div>
             <h2 class="section-title">Создание канала</h2>
-            <div class="section-meta">Только valid available username</div>
+            <div class="section-meta">Создание через основной аккаунт; проверка выполняется отдельно</div>
           </div>
         </div>
         <div class="toolbar">
@@ -2304,8 +2322,8 @@ INDEX_HTML = r"""<!doctype html>
       badgeEl.className = "badge";
       if (!data.has_accounts) {
         badgeEl.classList.add("warn");
-        badgeEl.textContent = "fallback";
-        $("#rotationAccountDetails").textContent = "Мульти-аккаунты не добавлены. Live-проверка использует старую Telegram-сессию из .env.";
+        badgeEl.textContent = "required";
+        $("#rotationAccountDetails").textContent = "Добавьте аккаунт во вкладке Аккаунты. Основной аккаунт из .env не участвует в live-проверках.";
         return;
       }
       if (!active) {
@@ -2618,8 +2636,8 @@ INDEX_HTML = r"""<!doctype html>
         $("#tgPhone").value = configData.phone;
       }
       $("#tgConfigMessage").textContent = configured
-        ? `Сессия: ${configData.session_name || "telegram_session"}`
-        : "Заполните API ID и API HASH, затем сохраните.";
+        ? `Основной аккаунт создания. Сессия: ${configData.session_name || "telegram_session"}`
+        : "Заполните API ID и API HASH основного аккаунта для создания каналов.";
     }
 
     async function saveTelegramConfig() {
@@ -2637,8 +2655,8 @@ INDEX_HTML = r"""<!doctype html>
         renderTelegramConfig(cfg);
         $("#tgPhone").value = cfg.phone || "";
         $("#tgConfigMessage").textContent = cfg.api_hash_changed
-          ? "API настройки сохранены. Если это новый аккаунт, сбросьте сессию и войдите заново."
-          : "API ID/телефон сохранены. API HASH не менялся.";
+          ? "API основного аккаунта сохранены. Если это новый аккаунт, сбросьте сессию и войдите заново."
+          : "API ID/телефон основного аккаунта сохранены. API HASH не менялся.";
         await loadTelegramAuthStatus();
       } catch (error) {
         $("#tgConfigMessage").textContent = error.data?.message || error.message;
@@ -2651,7 +2669,7 @@ INDEX_HTML = r"""<!doctype html>
       if (!auth.configured) {
         badge.classList.add("invalid");
         badge.textContent = "not configured";
-        $("#tgAuthDetails").textContent = auth.error || "Заполните TELEGRAM_API_ID и TELEGRAM_API_HASH в .env";
+        $("#tgAuthDetails").textContent = auth.error || "Заполните TELEGRAM_API_ID и TELEGRAM_API_HASH основного аккаунта для создания каналов";
         return;
       }
 
@@ -2667,11 +2685,11 @@ INDEX_HTML = r"""<!doctype html>
         badge.textContent = "authorized";
         const username = user.username ? `@${user.username}` : "без username";
         const name = `${user.first_name || ""} ${user.last_name || ""}`.trim();
-        $("#tgAuthDetails").textContent = `${name || username} · ${username} · id ${user.id || "-"}`;
+        $("#tgAuthDetails").textContent = `${name || username} · ${username} · id ${user.id || "-"} · только создание каналов`;
       } else {
         badge.classList.add("warn");
         badge.textContent = "login required";
-        $("#tgAuthDetails").textContent = auth.error || `Сессия ${auth.session_name || "telegram_session"} не авторизована`;
+        $("#tgAuthDetails").textContent = auth.error || `Основной аккаунт создания ${auth.session_name || "telegram_session"} не авторизован`;
       }
     }
 
@@ -2842,7 +2860,9 @@ INDEX_HTML = r"""<!doctype html>
     function syncTelegramMode() {
       const dryRun = $("#tgDryRun").checked;
       $("#tgCheckBtn").textContent = dryRun ? "Preview выбранных" : "Проверить выбранные live";
-      $("#telegramMeta").textContent = dryRun ? "Preview включен" : "Live режим: введите CHECK";
+      $("#telegramMeta").textContent = dryRun
+        ? "Preview включен; live-проверка использует только вкладку Аккаунты"
+        : "Live режим: введите CHECK; основной аккаунт не используется для проверки";
       $("#tgConfirm").disabled = dryRun;
     }
 

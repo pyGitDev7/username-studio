@@ -188,6 +188,11 @@ class AccountManager:
             self._normalize_expired_cooldowns(save=True)
             return any(account.effective_status != "dead" for account in self._accounts.values())
 
+    def has_active_accounts(self) -> bool:
+        with self._lock:
+            self._normalize_expired_cooldowns(save=True)
+            return any(account.effective_status == "active" for account in self._accounts.values())
+
     def list_accounts(self) -> List[Dict[str, Any]]:
         with self._lock:
             self._normalize_expired_cooldowns(save=True)
