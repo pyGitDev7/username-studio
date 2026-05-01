@@ -6,12 +6,13 @@ import asyncio
 from typing import List, Dict, Optional
 
 import config
+from account_manager import AccountManager
 from logger import logger, log_batch_start, log_batch_complete, log_telegram_check, log_error
 from storage import UsernameStorage
 from username_filter import create_filter
 from llm_generator import LLMUsernameGenerator
 from llm_evaluator import LLMUsernameEvaluator
-from telegram_client import create_telegram_manager
+from telegram_client import create_telegram_manager, check_batch_with_rotation
 import utils
 
 
@@ -23,6 +24,7 @@ class UsernameGenerationSystem:
         self.generator = None
         self.evaluator = None
         self.telegram_manager = None
+        self.account_manager = AccountManager()
         self.batch_num = self.storage.get_last_batch_num()
         self.last_evaluated_usernames = []
         self.last_generation_types = {}
@@ -183,14 +185,23 @@ class UsernameGenerationSystem:
 
     async def check_availability_batch(self, candidates: List[Dict], progress_callback=None) -> Dict[str, Dict]:
         """Проверяет доступность username на Telegram и сохраняет статусы."""
-        if not await self.ensure_telegram():
+        if self.no_telegram or self.dry_run:
+            logger.info("🧪 Preview: Telegram-запросы не выполнялись")
             return {}
 
         usernames = [item["username"] for item in candidates]
         logger.info(f"📱 Проверка {len(usernames)} username на Telegram")
 
         try:
-            if hasattr(self.telegram_manager, "check_batch_detailed"):
+            if self.account_manager.has_accounts():
+                results = await check_batch_with_rotation(
+                    usernames,
+                    self.account_manager,
+                    progress_callback=progress_callback,
+                )
+            elif not await self.ensure_telegram():
+                return {}
+            elif hasattr(self.telegram_manager, "check_batch_detailed"):
                 results = await self.telegram_manager.check_batch_detailed(usernames, progress_callback=progress_callback)
             else:
                 bool_results = await self.telegram_manager.check_batch(usernames)
@@ -281,9 +292,10 @@ class UsernameGenerationSystem:
             print("3. Создать канал для username")
             print("4. Статистика и просмотр базы")
             print(f"5. Переключить dry-run (сейчас: {mode})")
-            print("6. Выход")
+            print("6. Аккаунты Telegram")
+            print("7. Выход")
 
-            choice = input("\nВыберите опцию (1-6): ").strip()
+            choice = input("\nВыберите опцию (1-7): ").strip()
 
             if choice == "1":
                 await self._option_generate_and_evaluate()
@@ -297,6 +309,8 @@ class UsernameGenerationSystem:
                 self.dry_run = not self.dry_run
                 logger.info(f"🧪 Dry-run: {'включён' if self.dry_run else 'выключен'}")
             elif choice == "6":
+                await self._option_accounts_menu()
+            elif choice == "7":
                 logger.info("👋 Выход...")
                 break
             else:
@@ -477,6 +491,46 @@ class UsernameGenerationSystem:
             logger.info(f"✅ Готово! ID канала: {channel_id}")
         else:
             logger.error("❌ Не удалось создать канал")
+
+    async def _option_accounts_menu(self):
+        while True:
+            accounts = self.account_manager.list_accounts()
+            print("\nАккаунты Telegram:")
+            if accounts:
+                for index, account in enumerate(accounts, 1):
+                    cooldown = account.get("cooldown_remaining") or 0
+                    cooldown_text = f", cooldown {cooldown}s" if cooldown else ""
+                    active_mark = " *" if self.account_manager.active_account_id == account.get("account_id") else ""
+                    print(f"{index}. {account.get('phone')} - {account.get('status')}{cooldown_text}{active_mark}")
+            else:
+                print("Нет добавленных мульти-аккаунтов.")
+
+            print("\n1. Добавить аккаунт")
+            print("2. Удалить аккаунт")
+            print("0. Назад")
+            choice = input("\nВыберите пункт: ").strip()
+
+            if choice == "1":
+                api_id = input("API ID: ").strip()
+                api_hash = input("API Hash: ").strip()
+                phone = input("Телефон (+79990000000): ").strip()
+                try:
+                    account = await self.account_manager.add_account_interactive(api_id, api_hash, phone)
+                    logger.info(f"✅ Аккаунт добавлен: {account.phone}")
+                except Exception as e:
+                    log_error("Ошибка добавления аккаунта", e)
+            elif choice == "2":
+                account_id = input("Введите account_id или номер телефона для удаления: ").strip()
+                normalized = utils.normalize_phone(account_id)
+                target = normalized or account_id
+                if self.account_manager.delete_account(target):
+                    logger.info(f"✅ Аккаунт удалён: {account_id}")
+                else:
+                    logger.warning("⚠️ Аккаунт не найден")
+            elif choice == "0":
+                return
+            else:
+                logger.warning("⚠️ Неверный выбор")
 
     def _option_show_stats_menu(self):
         while True:

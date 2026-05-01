@@ -40,6 +40,8 @@ python web_app.py
 
 Telegram теперь подключается **только когда вы выбираете проверку доступности или создание канала**. Просто открыть меню можно безопасно.
 
+Для live-проверок можно добавить несколько Telegram-аккаунтов на вкладке **Аккаунты**. Если мульти-аккаунты добавлены, проверка автоматически переключается между ними при FloodWait/RPCError и показывает текущий активный номер на вкладке **Telegram**.
+
 ## Первый запуск
 
 1. Откройте PowerShell в папке проекта:
@@ -71,8 +73,10 @@ TELEGRAM_API_HASH=
 TELEGRAM_PHONE=
    LM_STUDIO_URL=http://127.0.0.1:1234/v1
    LM_STUDIO_MODEL=local-model
-   TELEGRAM_DRY_RUN=0
+TELEGRAM_DRY_RUN=0
    ```
+
+6. Для мульти-аккаунтов откройте вкладку **Аккаунты**, нажмите **+ Добавить**, введите `API ID`, `API HASH`, телефон, код из Telegram и 2FA-пароль, если он включен.
 
 ## Меню
 
@@ -82,7 +86,8 @@ TELEGRAM_PHONE=
 3. Создать канал для username
 4. Статистика и просмотр базы
 5. Переключить dry-run
-6. Выход
+6. Аккаунты Telegram
+7. Выход
 ```
 
 ### Рекомендуемый порядок
@@ -124,6 +129,7 @@ TELEGRAM_PHONE=
 - Не удаляйте `username_database.db`.
 - Не удаляйте `telegram_session.session`.
 - Не делайте массовые Telegram-проверки без понимания лимита.
+- Аккаунт со статусом `cooldown` временно пропускается, `dead` требует повторного входа.
 - Для просмотра используйте:
   ```powershell
   python main.py --no-telegram --dry-run
@@ -146,4 +152,3 @@ Get-Content logs\logs.txt -Tail 100
 ```powershell
 python main.py --no-telegram --dry-run --stats
 ```
-

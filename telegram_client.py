@@ -2,8 +2,8 @@
 Клиент Telegram для проверки и создания каналов
 """
 import asyncio
-import time
 import random
+from collections import deque
 from typing import List, Dict, Tuple, Optional
 
 from telethon import TelegramClient
@@ -24,7 +24,8 @@ from telethon.tl.functions.channels import (
 
 import config
 import utils
-from logger import logger
+from account_manager import Account, AccountManager, is_auth_error
+from logger import logger, log_account_check, log_account_ok, log_account_cooldown, log_account_switch
 
 
 class TelegramChannelManager:
@@ -317,6 +318,195 @@ class TelegramChannelManager:
     def reset_created_channels_count(self):
         """Сбрасывает счётчик каналов"""
         self.created_channels_count = 0
+
+
+async def _disconnect_rotation_clients(clients: Dict[str, TelegramClient]) -> None:
+    for client in list(clients.values()):
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+    clients.clear()
+
+
+async def _get_rotation_client(account: Account, clients: Dict[str, TelegramClient]) -> TelegramClient:
+    client = clients.get(account.account_id)
+    if client:
+        return client
+
+    client = TelegramClient(account.session_name, account.api_id, account.api_hash)
+    await client.connect()
+    if not await client.is_user_authorized():
+        await client.disconnect()
+        raise RuntimeError("account_session_not_authorized")
+    clients[account.account_id] = client
+    return client
+
+
+async def _drop_rotation_client(account: Account, clients: Dict[str, TelegramClient]) -> None:
+    client = clients.pop(account.account_id, None)
+    if client:
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+
+
+async def _check_username_status_with_client(client: TelegramClient, username: str) -> Dict[str, object]:
+    username = utils.normalize_username_input(username)
+    if not utils.is_telegram_username_format(username):
+        return {"available": False, "status": "invalid", "notes": "invalid_format"}
+
+    await asyncio.sleep(random.uniform(config.REQUEST_DELAY_MIN, config.REQUEST_DELAY_MAX))
+
+    try:
+        await client(ResolveUsernameRequest(username))
+        return {"available": False, "status": "checked_taken", "notes": "resolve_username_found"}
+    except UsernameNotOccupiedError:
+        pass
+
+    result = await client(CheckAccountUsernameRequest(username))
+    if result:
+        return {"available": True, "status": "available", "notes": "account_check_ok"}
+    return {"available": False, "status": "checked_taken", "notes": "account_check_false"}
+
+
+async def check_username_with_rotation(
+    username: str,
+    account_manager: AccountManager,
+    clients: Optional[Dict[str, TelegramClient]] = None,
+) -> Dict[str, object]:
+    """
+    Checks one username using the next available account.
+
+    Account-level errors move the account to cooldown/dead state and retry the
+    same username with another account. The username is not marked as processed
+    when no account is available.
+    """
+    username = utils.normalize_username_input(username)
+    own_clients = clients is None
+    if clients is None:
+        clients = {}
+    attempted: set[str] = set()
+
+    try:
+        while True:
+            previous_account_id = account_manager.active_account_id
+            account = account_manager.get_available_account(exclude=attempted)
+            if not account:
+                return {
+                    "available": False,
+                    "status": "error",
+                    "notes": "no_available_accounts",
+                    "retry_later": True,
+                }
+
+            attempted.add(account.account_id)
+            if previous_account_id != account.account_id:
+                log_account_switch(account.phone)
+            log_account_check(account.phone, username)
+
+            try:
+                client = await _get_rotation_client(account, clients)
+                result = await _check_username_status_with_client(client, username)
+                result["account_id"] = account.account_id
+                result["account_phone"] = account.phone
+                account_manager.mark_active(account)
+                log_account_ok(account.phone, username)
+                return result
+
+            except UsernameInvalidError:
+                result = {"available": False, "status": "invalid", "notes": "UsernameInvalidError"}
+                result["account_id"] = account.account_id
+                result["account_phone"] = account.phone
+                account_manager.mark_active(account)
+                log_account_ok(account.phone, username)
+                return result
+
+            except UsernameOccupiedError:
+                result = {"available": False, "status": "checked_taken", "notes": "UsernameOccupiedError"}
+                result["account_id"] = account.account_id
+                result["account_phone"] = account.phone
+                account_manager.mark_active(account)
+                log_account_ok(account.phone, username)
+                return result
+
+            except FloodWaitError as exc:
+                wait_time = int(getattr(exc, "seconds", 0) or 1)
+                account_manager.set_cooldown(account, wait_time, f"FloodWaitError: {wait_time}s")
+                log_account_cooldown(account.phone, wait_time)
+                await _drop_rotation_client(account, clients)
+                continue
+
+            except RPCError as exc:
+                if exc.__class__.__name__ == "UsernamePurchaseAvailableError":
+                    result = {"available": False, "status": "invalid", "notes": "UsernamePurchaseAvailableError"}
+                    result["account_id"] = account.account_id
+                    result["account_phone"] = account.phone
+                    account_manager.mark_active(account)
+                    log_account_ok(account.phone, username)
+                    return result
+
+                account_manager.set_cooldown(account, 120, f"{type(exc).__name__}: {exc}")
+                log_account_cooldown(account.phone, 120)
+                await _drop_rotation_client(account, clients)
+                continue
+
+            except Exception as exc:
+                if is_auth_error(exc) or "authorized" in str(exc).lower():
+                    account_manager.mark_dead(account, f"{type(exc).__name__}: {exc}")
+                    await _drop_rotation_client(account, clients)
+                    continue
+
+                account_manager.set_cooldown(account, 120, f"{type(exc).__name__}: {exc}")
+                log_account_cooldown(account.phone, 120)
+                await _drop_rotation_client(account, clients)
+                continue
+    finally:
+        if own_clients:
+            await _disconnect_rotation_clients(clients)
+
+
+async def check_batch_with_rotation(
+    usernames: List[str],
+    account_manager: AccountManager,
+    progress_callback=None,
+) -> Dict[str, Dict[str, object]]:
+    """
+    Checks a batch through a queue so the current username survives account switches.
+    """
+    queue = deque()
+    seen = set()
+    for raw_username in usernames:
+        username = utils.normalize_username_input(raw_username)
+        if username and username not in seen:
+            seen.add(username)
+            queue.append(username)
+
+    results: Dict[str, Dict[str, object]] = {}
+    clients: Dict[str, TelegramClient] = {}
+    total = len(queue)
+
+    try:
+        while queue:
+            username = queue[0]
+            details = await check_username_with_rotation(username, account_manager, clients=clients)
+            if details.get("retry_later"):
+                logger.warning(f"⚠️ Нет доступных Telegram-аккаунтов, очередь остановлена на @{username}")
+                break
+
+            queue.popleft()
+            results[username] = details
+            if progress_callback:
+                callback_result = progress_callback(username, details, len(results), total)
+                if asyncio.iscoroutine(callback_result):
+                    await callback_result
+    finally:
+        await _disconnect_rotation_clients(clients)
+
+    available_count = sum(1 for details in results.values() if details.get("available"))
+    logger.info(f"📊 Ротационная проверка: {available_count}/{len(results)} доступны, осталось {len(queue)}")
+    return results
 
 
 def create_telegram_manager() -> TelegramChannelManager:

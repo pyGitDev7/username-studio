@@ -101,3 +101,23 @@ def log_error(message: str, exception: Exception = None):
 def log_warning(message: str):
     """Логирует предупреждение"""
     logger.warning(f"⚠️ {message}")
+
+
+def log_account_check(phone: str, username: str):
+    """Логирует начало проверки username конкретным аккаунтом."""
+    logger.info(f"[ACCOUNT: {phone}] checking @{username}")
+
+
+def log_account_ok(phone: str, username: str):
+    """Логирует успешную проверку username конкретным аккаунтом."""
+    logger.info(f"[ACCOUNT: {phone}] OK @{username}")
+
+
+def log_account_cooldown(phone: str, seconds: int):
+    """Логирует cooldown Telegram-аккаунта."""
+    logger.warning(f"[ACCOUNT: {phone}] COOLDOWN {int(seconds)}s")
+
+
+def log_account_switch(phone: str):
+    """Логирует переключение активного Telegram-аккаунта."""
+    logger.info(f"[SWITCH] now using {phone}")
