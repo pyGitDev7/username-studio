@@ -48,6 +48,15 @@ AUTH_FLOW_TTL_SECONDS = 10 * 60
 ENV_PATH = Path(".env")
 TELEGRAM_ENV_KEYS = ["TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_PHONE"]
 
+SERVER_RUN_TOKEN = uuid.uuid4().hex
+CLIENT_HEARTBEAT_TIMEOUT_SECONDS = 15
+CLIENT_SHUTDOWN_GRACE_SECONDS = 4
+_client_lock = threading.RLock()
+_active_clients: Dict[str, float] = {}
+_client_seen = False
+_shutdown_timer: Optional[threading.Timer] = None
+_shutdown_requested = False
+
 
 def get_storage() -> UsernameStorage:
     global _storage
@@ -101,6 +110,95 @@ def mask_phone(phone: str) -> str:
 
 def refresh_config() -> None:
     config.reload_env()
+
+
+def _browser_client_id(payload: Dict[str, Any]) -> str:
+    if str(payload.get("server_token") or "") != SERVER_RUN_TOKEN:
+        raise ValueError("stale browser client")
+    return str(payload.get("client_id") or "").strip()[:80]
+
+
+def _cleanup_stale_clients_locked(now: Optional[float] = None) -> None:
+    current = now or time.time()
+    stale_ids = [
+        client_id for client_id, last_seen in _active_clients.items()
+        if current - last_seen > CLIENT_HEARTBEAT_TIMEOUT_SECONDS
+    ]
+    for client_id in stale_ids:
+        _active_clients.pop(client_id, None)
+
+
+def _cancel_pending_shutdown_locked() -> None:
+    global _shutdown_requested, _shutdown_timer
+
+    if _shutdown_timer is not None:
+        _shutdown_timer.cancel()
+        _shutdown_timer = None
+    _shutdown_requested = False
+
+
+def _schedule_server_shutdown(server: ThreadingHTTPServer, reason: str) -> bool:
+    global _shutdown_requested, _shutdown_timer
+
+    with _client_lock:
+        _cleanup_stale_clients_locked()
+        if not _client_seen or _active_clients:
+            return False
+        if _shutdown_requested:
+            return True
+
+        _shutdown_requested = True
+
+        def shutdown_server() -> None:
+            print(f"Stopping dashboard: {reason}", flush=True)
+            server.shutdown()
+
+        _shutdown_timer = threading.Timer(CLIENT_SHUTDOWN_GRACE_SECONDS, shutdown_server)
+        _shutdown_timer.daemon = True
+        _shutdown_timer.start()
+        return True
+
+
+def _client_payload(shutdown_scheduled: bool = False) -> Dict[str, Any]:
+    with _client_lock:
+        _cleanup_stale_clients_locked()
+        return {
+            "active_clients": len(_active_clients),
+            "shutdown_scheduled": shutdown_scheduled or _shutdown_requested,
+            "heartbeat_timeout": CLIENT_HEARTBEAT_TIMEOUT_SECONDS,
+        }
+
+
+def register_browser_client(payload: Dict[str, Any]) -> Dict[str, Any]:
+    global _client_seen
+
+    client_id = _browser_client_id(payload)
+    if not client_id:
+        raise ValueError("client_id is required")
+
+    with _client_lock:
+        _client_seen = True
+        _active_clients[client_id] = time.time()
+        _cancel_pending_shutdown_locked()
+    return _client_payload()
+
+
+def close_browser_client(payload: Dict[str, Any], server: ThreadingHTTPServer) -> Dict[str, Any]:
+    client_id = _browser_client_id(payload)
+    with _client_lock:
+        if client_id:
+            _active_clients.pop(client_id, None)
+        _cleanup_stale_clients_locked()
+    return _client_payload(_schedule_server_shutdown(server, "browser closed"))
+
+
+def monitor_browser_clients(server: ThreadingHTTPServer, stop_event: threading.Event) -> None:
+    while not stop_event.wait(2):
+        with _client_lock:
+            _cleanup_stale_clients_locked()
+            idle = _client_seen and not _active_clients
+        if idle:
+            _schedule_server_shutdown(server, "browser heartbeat stopped")
 
 
 def telegram_session_path() -> Path:
@@ -925,7 +1023,7 @@ class UsernameDashboardHandler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def _send_html(self, html: str) -> None:
-        raw = html.encode("utf-8")
+        raw = html.replace("__SERVER_RUN_TOKEN__", SERVER_RUN_TOKEN).encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
@@ -1021,7 +1119,13 @@ class UsernameDashboardHandler(BaseHTTPRequestHandler):
         try:
             payload = self._read_json()
 
-            if parsed.path == "/api/generate":
+            if parsed.path in {"/api/client/open", "/api/client/ping"}:
+                self._send_json(register_browser_client(payload))
+
+            elif parsed.path == "/api/client/close":
+                self._send_json(close_browser_client(payload, self.server))
+
+            elif parsed.path == "/api/generate":
                 batch_size = clamp_int(payload.get("batch_size"), config.BATCH_SIZE, maximum=500)
                 min_length = clamp_int(payload.get("min_length"), config.USERNAME_MIN_LENGTH, minimum=4, maximum=10)
                 max_length = clamp_int(payload.get("max_length"), config.USERNAME_MAX_LENGTH, minimum=4, maximum=10)
@@ -1184,6 +1288,14 @@ def create_server(host: str, port: int) -> ReusableThreadingHTTPServer:
 
 def run_server(host: str, port: int, open_browser: bool = False) -> None:
     server = create_server(host, port)
+    monitor_stop = threading.Event()
+    monitor = threading.Thread(
+        target=monitor_browser_clients,
+        args=(server, monitor_stop),
+        name="browser-client-monitor",
+        daemon=True,
+    )
+    monitor.start()
     url = f"http://{host}:{server.server_address[1]}"
     print(f"Username dashboard: {url}", flush=True)
     if open_browser:
@@ -1193,6 +1305,7 @@ def run_server(host: str, port: int, open_browser: bool = False) -> None:
     except KeyboardInterrupt:
         print("\nStopping dashboard...", flush=True)
     finally:
+        monitor_stop.set()
         server.server_close()
 
 
@@ -2061,7 +2174,22 @@ INDEX_HTML = r"""<!doctype html>
   <script>
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => Array.from(document.querySelectorAll(selector));
-    const app = { config: {}, selectedChannel: null, telegramPreview: null, authFlowId: null, accountAuthFlowId: null };
+    function makeClientId() {
+      if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    const app = {
+      config: {},
+      selectedChannel: null,
+      telegramPreview: null,
+      authFlowId: null,
+      accountAuthFlowId: null,
+      clientId: makeClientId(),
+      serverToken: "__SERVER_RUN_TOKEN__",
+      heartbeatTimer: null,
+      closeSent: false
+    };
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -2077,6 +2205,50 @@ INDEX_HTML = r"""<!doctype html>
       }
       return data;
     }
+
+    function clientBody() {
+      return JSON.stringify({ client_id: app.clientId, server_token: app.serverToken });
+    }
+
+    async function postClientEvent(action, keepalive = false) {
+      return fetch(`/api/client/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: clientBody(),
+        keepalive
+      }).catch(() => null);
+    }
+
+    async function registerBrowserClient() {
+      await postClientEvent("open");
+      if (app.heartbeatTimer) clearInterval(app.heartbeatTimer);
+      app.heartbeatTimer = setInterval(() => {
+        postClientEvent("ping", true);
+      }, 3000);
+    }
+
+    function notifyBrowserClosed() {
+      if (app.closeSent) return;
+      app.closeSent = true;
+      if (app.heartbeatTimer) clearInterval(app.heartbeatTimer);
+
+      const body = clientBody();
+      if (navigator.sendBeacon) {
+        const blob = new Blob([body], { type: "application/json" });
+        navigator.sendBeacon("/api/client/close", blob);
+        return;
+      }
+
+      fetch("/api/client/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    window.addEventListener("pagehide", notifyBrowserClosed);
+    window.addEventListener("beforeunload", notifyBrowserClosed);
 
     function fmtNumber(value) {
       if (value === null || value === undefined || value === "") return "0";
@@ -2817,6 +2989,7 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     async function init() {
+      await registerBrowserClient();
       bindEvents();
       syncTelegramMode();
       await loadConfig();
