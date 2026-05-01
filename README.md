@@ -1,85 +1,92 @@
-# Username Studio
+<h1 align="center">Username Studio</h1>
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Telegram](https://img.shields.io/badge/Telegram-Telethon-26A5E4?logo=telegram&logoColor=white)](https://docs.telethon.dev/)
-[![Storage](https://img.shields.io/badge/Storage-SQLite-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![LLM](https://img.shields.io/badge/LLM-LM%20Studio-111827)](https://lmstudio.ai/)
-[![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white)](https://www.microsoft.com/windows)
+<p align="center">
+  Локальная студия для генерации, оценки, проверки и учета коротких Telegram username.
+</p>
 
-**Username Studio** is a local Python tool for generating, scoring, filtering, checking, and tracking short Telegram usernames.
+<p align="center">
+  <a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white"></a>
+  <a href="https://docs.telethon.dev/"><img alt="Telethon" src="https://img.shields.io/badge/Telegram-Telethon-26A5E4?logo=telegram&logoColor=white"></a>
+  <a href="https://www.sqlite.org/"><img alt="SQLite" src="https://img.shields.io/badge/Storage-SQLite-003B57?logo=sqlite&logoColor=white"></a>
+  <a href="https://lmstudio.ai/"><img alt="LM Studio" src="https://img.shields.io/badge/LLM-LM%20Studio-111827"></a>
+  <img alt="Windows" src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white">
+</p>
 
-The project combines a local LLM workflow through LM Studio, strict username validation, SQLite history, Telegram availability checks through Telethon, and a local browser dashboard. It is designed so that generation and database browsing are safe by default, while live Telegram actions stay behind explicit user choices and confirmation checks.
+---
 
-## Contents
+**Username Studio** помогает находить короткие Telegram username, оценивать их качество, сохранять историю, проверять доступность через Telegram и аккуратно вести список уже использованных вариантов.
 
-- [What It Does](#what-it-does)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Ways to Run](#ways-to-run)
-- [How the Workflow Works](#how-the-workflow-works)
-- [Telegram Safety Model](#telegram-safety-model)
-- [Database and Statuses](#database-and-statuses)
-- [Project Structure](#project-structure)
-- [Troubleshooting](#troubleshooting)
-- [Publishing Safety](#publishing-safety)
+Проект сделан как локальный инструмент: данные лежат на вашей машине, Telegram подключается только когда вы явно запускаете live-действие, а безопасные режимы позволяют генерировать и анализировать кандидатов без Telegram-запросов.
 
-## What It Does
+## Содержание
 
-Username Studio helps you build a ranked pool of short Telegram username candidates and keep track of what happened to each one.
+- [Что умеет проект](#что-умеет-проект)
+- [Быстрый старт](#быстрый-старт)
+- [Установка вручную](#установка-вручную)
+- [Настройка `.env`](#настройка-env)
+- [Режимы запуска](#режимы-запуска)
+- [Как устроен workflow](#как-устроен-workflow)
+- [Безопасность Telegram-действий](#безопасность-telegram-действий)
+- [База данных и статусы](#база-данных-и-статусы)
+- [Структура проекта](#структура-проекта)
+- [Частые проблемы](#частые-проблемы)
+- [Публикация на GitHub](#публикация-на-github)
 
-| Area | Details |
+## Что умеет проект
+
+| Направление | Описание |
 |---|---|
-| Generation | Creates username candidates through LM Studio using an OpenAI-compatible local API. |
-| Fallback generation | Continues working even if LM Studio is unavailable. |
-| Evaluation | Scores candidates by readability, brandability, meaning, and rarity. |
-| Filtering | Enforces the current project rule: `5-6` characters, lowercase latin letters only: `[a-z]`. |
-| Telegram checks | Checks selected candidates through Telegram only when explicitly requested. |
-| Channel creation | Can create a Telegram channel for an available username after confirmation. |
-| Storage | Saves candidates, scores, batches, statuses, and used usernames in SQLite. |
-| Interface | Provides both a local browser dashboard and an older console menu. |
-| Logs | Writes runtime logs to `logs/logs.txt`. |
+| Генерация | Создает username через LM Studio OpenAI-compatible API. |
+| Fallback-генерация | Продолжает работать, даже если LM Studio выключен. |
+| Оценка | Считает score по readability, brandability, meaning и rarity. |
+| Фильтрация | Пропускает только текущий формат проекта: `5-6` символов, lowercase latin `[a-z]`. |
+| Telegram-проверка | Проверяет доступность выбранных кандидатов через Telethon. |
+| Создание каналов | Может создать Telegram-канал для подтвержденного доступного username. |
+| SQLite-учет | Хранит batch, score, статусы, проверки и использованные username. |
+| Web-интерфейс | Открывает локальную dashboard-страницу в браузере. |
+| CLI-режим | Сохраняет старое консольное меню для работы из терминала. |
+| Логи | Пишет подробный лог в `logs/logs.txt`. |
 
-The generator currently works with three candidate styles:
+Типы генерации:
 
-| Generation type | Meaning |
+| Тип | Что означает |
 |---|---|
-| `brandable` | Short artificial names that should feel like brands. |
-| `russian_transliteration` | Latin usernames inspired by Russian words or sounds. |
-| `multilingual` | Short names inspired by words from different languages. |
+| `brandable` | Короткие искусственные имена, похожие на бренд. |
+| `russian_transliteration` | Латинские username, вдохновленные русскими словами или звучанием. |
+| `multilingual` | Короткие варианты, вдохновленные словами из разных языков. |
 
-## Quick Start
+## Быстрый старт
 
-On Windows, the simplest way to start the project is the single launcher file:
+Самый простой запуск на Windows:
 
 ```powershell
 .\START.bat
 ```
 
-The launcher:
+`START.bat` делает всю рутину сам:
 
-- switches into the project directory;
-- creates `venv` if it does not exist;
-- creates `.env` from `.env.example` if needed;
-- installs dependencies when `requirements.txt` changes;
-- starts the local web interface through `main.py`;
-- enables UTF-8 console output for readable Russian text.
+- переходит в папку проекта;
+- создает `venv`, если окружения еще нет;
+- создает `.env` из `.env.example`, если файла настроек еще нет;
+- ставит зависимости при первом запуске или после изменения `requirements.txt`;
+- включает UTF-8 для нормального вывода русского текста;
+- запускает приложение через `main.py`.
 
-For a safe no-Telegram smoke test:
+Безопасная проверка без Telegram:
 
 ```powershell
 .\START.bat --no-telegram --dry-run --stats
 ```
 
-For the old console menu:
+Старое консольное меню:
 
 ```powershell
 .\START.bat --cli
 ```
 
-## Installation
+## Установка вручную
 
-If you do not want to use `START.bat`, set up the project manually:
+Если нужен ручной запуск без `START.bat`:
 
 ```powershell
 python -m venv venv
@@ -89,16 +96,16 @@ copy .env.example .env
 python main.py
 ```
 
-Minimum practical requirements:
+Минимальные требования:
 
-| Requirement | Purpose |
+| Что нужно | Для чего |
 |---|---|
-| Python 3.10+ | Runtime for the application. |
-| LM Studio | Optional but recommended local LLM generation and scoring. |
-| Telegram API credentials | Required only for live Telegram checks and channel creation. |
-| Windows PowerShell | Primary supported shell for the included launcher and publish script. |
+| Python 3.10+ | Запуск Python-приложения. |
+| LM Studio | Локальная LLM-генерация и оценка, опционально. |
+| Telegram API credentials | Только для live-проверок и создания каналов. |
+| Windows PowerShell | Основной поддерживаемый shell для launcher/publish скриптов. |
 
-Dependencies are intentionally small:
+Зависимости проекта:
 
 ```text
 telethon
@@ -107,9 +114,9 @@ Unidecode
 python-dotenv
 ```
 
-## Configuration
+## Настройка `.env`
 
-Create `.env` from `.env.example` and fill in only what you need.
+Скопируйте `.env.example` в `.env` и заполните только нужные поля.
 
 ```env
 TELEGRAM_API_ID=
@@ -125,148 +132,148 @@ LLM_MAX_TOKENS=2000
 LOG_LEVEL=INFO
 ```
 
-| Variable | Required | Description |
-|---|---:|---|
-| `TELEGRAM_API_ID` | Only for Telegram live mode | Numeric API ID from `https://my.telegram.org/`. |
-| `TELEGRAM_API_HASH` | Only for Telegram live mode | API hash from Telegram. Keep it private. |
-| `TELEGRAM_PHONE` | Only for Telegram live mode | Phone number used for Telethon login. |
-| `TELEGRAM_DRY_RUN` | Recommended | `1` keeps Telegram actions in preview mode by default. |
-| `LM_STUDIO_URL` | Optional | OpenAI-compatible LM Studio endpoint. |
-| `LM_STUDIO_MODEL` | Optional | Model name sent to LM Studio. |
-| `LLM_TEMPERATURE` | Optional | Generation randomness. |
-| `LLM_MAX_TOKENS` | Optional | Maximum response size for LLM calls. |
-| `LOG_LEVEL` | Optional | Logging verbosity. |
+| Переменная | Когда нужна | Описание |
+|---|---|---|
+| `TELEGRAM_API_ID` | Live Telegram mode | API ID из `https://my.telegram.org/`. |
+| `TELEGRAM_API_HASH` | Live Telegram mode | API hash из Telegram. Не публиковать. |
+| `TELEGRAM_PHONE` | Live Telegram mode | Телефон аккаунта для Telethon-сессии. |
+| `TELEGRAM_DRY_RUN` | Рекомендуется | `1` включает preview-режим без реальных Telegram-действий. |
+| `LM_STUDIO_URL` | Опционально | URL OpenAI-compatible сервера LM Studio. |
+| `LM_STUDIO_MODEL` | Опционально | Имя модели, которое отправляется в LM Studio. |
+| `LLM_TEMPERATURE` | Опционально | Температура генерации. |
+| `LLM_MAX_TOKENS` | Опционально | Лимит токенов ответа LLM. |
+| `LOG_LEVEL` | Опционально | Уровень логирования. |
 
-Telegram credentials can be created at:
+Telegram API-ключи создаются здесь:
 
 ```text
 https://my.telegram.org/
 ```
 
-LM Studio should expose an OpenAI-compatible server, usually at:
+LM Studio обычно запускает OpenAI-compatible API здесь:
 
 ```text
 http://localhost:1234/v1
 ```
 
-If LM Studio is not running, the app still has fallback generation and fallback scoring logic.
+Если LM Studio недоступен, проект использует fallback-генерацию и fallback-оценку.
 
-## Ways to Run
+## Режимы запуска
 
-| Command | Mode | Telegram |
+| Команда | Что делает | Telegram |
 |---|---|---|
-| `.\START.bat` | Local web dashboard | Only when a live Telegram action is selected. |
-| `.\START.bat --cli` | Console menu | Only in Telegram menu actions. |
-| `.\START.bat --no-telegram --dry-run` | Safe preview mode | Disabled. |
-| `.\START.bat --no-telegram --dry-run --stats` | Print stats and exit | Disabled. |
-| `python main.py` | Web dashboard | Same as default launcher. |
-| `python main.py --cli` | Console menu | Same as old workflow. |
-| `python web_app.py` | Direct web dashboard | Same dashboard without going through `main.py`. |
+| `.\START.bat` | Запускает локальный web-интерфейс. | Только при выбранном live-действии. |
+| `.\START.bat --cli` | Открывает старое консольное меню. | Только в пунктах Telegram. |
+| `.\START.bat --no-telegram --dry-run` | Безопасный preview-режим. | Полностью отключен. |
+| `.\START.bat --no-telegram --dry-run --stats` | Показывает статистику и выходит. | Полностью отключен. |
+| `python main.py` | Запуск web-интерфейса напрямую. | Как в обычном режиме. |
+| `python main.py --cli` | CLI-меню напрямую. | Как в CLI. |
+| `python web_app.py` | Web-интерфейс напрямую. | Как в web-режиме. |
 
-The default app opens a local browser interface on:
+По умолчанию web-интерфейс открывается локально:
 
 ```text
 http://127.0.0.1:8080
 ```
 
-You can change host and port:
+Порт можно изменить:
 
 ```powershell
 python main.py --host 127.0.0.1 --port 8090
 ```
 
-## How the Workflow Works
+## Как устроен workflow
 
 ```mermaid
 flowchart LR
-    A["Generate candidates"] --> B["Filter format and blocked words"]
-    B --> C["Score candidates"]
-    C --> D["Save batch and scores in SQLite"]
-    D --> E["Review dashboard or CLI stats"]
-    E --> F{"Telegram live check?"}
-    F -->|"No"| G["Keep candidates as unchecked"]
-    F -->|"Yes"| H["Check selected usernames through Telethon"]
-    H --> I["Update status: available, checked_taken, invalid, error"]
-    I --> J{"Create channel?"}
-    J -->|"No"| E
-    J -->|"Yes, confirmed"| K["Create channel and mark username as used"]
+    A["Генерация кандидатов"] --> B["Фильтрация формата и стоп-слов"]
+    B --> C["Оценка качества"]
+    C --> D["Сохранение batch и score в SQLite"]
+    D --> E["Просмотр в dashboard или CLI"]
+    E --> F{"Нужна Telegram-проверка?"}
+    F -->|"Нет"| G["Кандидаты остаются unchecked"]
+    F -->|"Да"| H["Проверка выбранных username через Telethon"]
+    H --> I["Обновление статуса: available, checked_taken, invalid, error"]
+    I --> J{"Создать канал?"}
+    J -->|"Нет"| E
+    J -->|"Да, подтверждено"| K["Создание канала и статус used"]
 ```
 
-The intended workflow is:
+Рекомендуемый порядок работы:
 
-1. Generate and evaluate a batch.
-2. Review the best candidates in the dashboard or stats view.
-3. Run a dry-run Telegram preview first.
-4. Check a small selected group live.
-5. Create a channel only for a confirmed available username.
+1. Сгенерировать и оценить batch.
+2. Посмотреть лучшие варианты в dashboard или статистике.
+3. Сначала выполнить Telegram preview в dry-run.
+4. Проверить live только небольшую выбранную группу.
+5. Создавать канал только для подтвержденного `available` username.
 
-## Telegram Safety Model
+## Безопасность Telegram-действий
 
-Telegram actions are intentionally constrained.
+Telegram-действия сделаны осторожными и явными.
 
-| Safety behavior | Why it matters |
+| Механизм | Зачем нужен |
 |---|---|
-| Lazy Telegram connection | Opening the app does not immediately connect to Telegram. |
-| `--no-telegram` flag | Fully disables Telegram actions for safe local browsing. |
-| `dry-run` mode | Shows what would happen without sending Telegram requests. |
-| Local validation first | Rejects usernames that do not match the current project rules. |
-| Database status checks | Avoids reusing usernames already marked `used`, `invalid`, or `checked_taken`. |
-| Confirmation before creation | Channel creation requires an explicit user confirmation. |
-| FloodWait handling | Telegram rate-limit responses are handled with retry limits. |
+| Ленивое подключение Telegram | Простой запуск приложения не подключается к Telegram. |
+| `--no-telegram` | Полностью отключает Telegram-действия. |
+| `dry-run` | Показывает, что будет сделано, без реальных запросов. |
+| Локальная валидация | Отсекает username вне формата проекта. |
+| Проверка статуса в базе | Не дает повторно использовать `used`, `invalid`, `checked_taken`. |
+| Подтверждение перед созданием | Канал создается только после явного подтверждения. |
+| FloodWait handling | Ограничивает повторы после Telegram rate-limit. |
 
-The app should not be used for aggressive or large-scale Telegram probing. Keep checks small and deliberate.
+Проект не предназначен для агрессивной массовой проверки Telegram. Проверяйте небольшие списки и учитывайте лимиты Telegram.
 
-## Database and Statuses
+## База данных и статусы
 
-The project stores local state in:
+Локальная база:
 
 ```text
 username_database.db
 ```
 
-Main SQLite tables:
+Основные таблицы:
 
-| Table | Purpose |
+| Таблица | Назначение |
 |---|---|
-| `checked_usernames` | Telegram availability check results and current status. |
-| `used_usernames` | Usernames already used for created channels. |
-| `scores` | Latest scoring values for each username. |
-| `batches` | Generation batch metadata. |
-| `batch_usernames` | Username membership inside generated batches. |
+| `checked_usernames` | Результаты Telegram-проверок и текущий статус. |
+| `used_usernames` | Username, уже использованные для созданных каналов. |
+| `scores` | Последние оценки username. |
+| `batches` | Метаданные batch-генераций. |
+| `batch_usernames` | Состав username внутри batch. |
 
-Username statuses:
+Статусы username:
 
-| Status | Meaning |
+| Статус | Значение |
 |---|---|
-| `unchecked` | Candidate exists locally, but Telegram has not checked it yet. |
-| `checked_taken` | Telegram indicates the username is taken or unavailable. |
-| `available` | Telegram indicates the username is available. |
-| `used` | Username has already been used for a channel. |
-| `invalid` | Local validation or Telegram rejected the username. |
-| `error` | A check failed, for example after FloodWait retries. |
+| `unchecked` | Есть локальная оценка или batch, Telegram еще не проверялся. |
+| `checked_taken` | Telegram показал, что username занят или недоступен. |
+| `available` | Telegram показал, что username доступен. |
+| `used` | Username уже использован для канала. |
+| `invalid` | Telegram или локальный фильтр признал username невалидным. |
+| `error` | Проверка завершилась ошибкой, например после FloodWait retries. |
 
-Do not delete `username_database.db` unless you intentionally want to lose local history.
+Не удаляйте `username_database.db`, если хотите сохранить историю.
 
-## Project Structure
+## Структура проекта
 
-| File | Purpose |
+| Файл | Назначение |
 |---|---|
-| `START.bat` | One-file Windows launcher. |
-| `main.py` | Main entrypoint, web/CLI switch, generation workflow. |
-| `web_app.py` | Local browser dashboard and HTTP API. |
-| `config.py` | Environment loading and project constants. |
-| `llm_generator.py` | LLM and fallback username generation. |
-| `llm_evaluator.py` | LLM and fallback scoring. |
-| `username_filter.py` | Username validation, blacklist, duplicate filtering. |
-| `telegram_client.py` | Telethon integration for checks and channel creation. |
-| `storage.py` | SQLite schema, migrations, records, stats. |
-| `logger.py` | Console and file logging. |
-| `utils.py` | Shared normalization, validation, and helper functions. |
-| `requirements.txt` | Python dependencies. |
-| `.env.example` | Safe configuration template. |
-| `publish_to_github.ps1` | Safety-focused GitHub publication helper. |
+| `START.bat` | Запуск проекта одним файлом на Windows. |
+| `main.py` | Главная точка входа, переключение web/CLI, основной workflow. |
+| `web_app.py` | Локальная browser dashboard и HTTP API. |
+| `config.py` | Загрузка `.env` и константы проекта. |
+| `llm_generator.py` | LLM-генерация и fallback-генерация username. |
+| `llm_evaluator.py` | LLM-оценка и fallback-оценка. |
+| `username_filter.py` | Валидация, blacklist, удаление дублей. |
+| `telegram_client.py` | Telethon-проверки и создание каналов. |
+| `storage.py` | SQLite-схема, миграции, записи, статистика. |
+| `logger.py` | Логи в консоль и `logs/logs.txt`. |
+| `utils.py` | Общие функции нормализации, валидации и helpers. |
+| `requirements.txt` | Python-зависимости. |
+| `.env.example` | Безопасный шаблон настроек. |
+| `publish_to_github.ps1` | Скрипт безопасной публикации на GitHub. |
 
-Generated or private local files are ignored by Git:
+Локальные и приватные файлы исключены из Git:
 
 ```text
 .env
@@ -279,13 +286,13 @@ venv/
 __pycache__/
 ```
 
-## Troubleshooting
+## Частые проблемы
 
-### Russian text looks broken in the console
+### Русский текст сломан в консоли
 
-Use `START.bat`; it switches the console to UTF-8 and sets Python UTF-8 variables.
+Используйте `START.bat`: он включает UTF-8 автоматически.
 
-If running manually:
+При ручном запуске:
 
 ```powershell
 chcp 65001
@@ -294,19 +301,19 @@ $env:PYTHONIOENCODING = "utf-8"
 python main.py
 ```
 
-### LM Studio is unavailable
+### LM Studio не отвечает
 
-Check that LM Studio is running an OpenAI-compatible server:
+Проверьте, что включен OpenAI-compatible server:
 
 ```text
 http://localhost:1234/v1
 ```
 
-The project can still generate and score through fallback logic, but LLM quality will be lower.
+Без LM Studio проект продолжит работать через fallback-логику, но качество генерации и оценки будет проще.
 
-### Telegram login fails
+### Telegram login не проходит
 
-Check `.env`:
+Проверьте `.env`:
 
 ```env
 TELEGRAM_API_ID=
@@ -314,33 +321,31 @@ TELEGRAM_API_HASH=
 TELEGRAM_PHONE=
 ```
 
-If the local Telethon session is stale, use the dashboard session reset flow or remove the local session file only when you are ready to log in again.
+Если локальная Telethon-сессия устарела, используйте reset session в dashboard или удаляйте session-файл только когда готовы войти заново.
 
-### I only want to inspect data safely
-
-Run:
+### Нужно просто безопасно посмотреть данные
 
 ```powershell
 .\START.bat --no-telegram --dry-run --stats
 ```
 
-or:
+или:
 
 ```powershell
 .\START.bat --no-telegram --dry-run
 ```
 
-### Show recent logs
+### Посмотреть последние логи
 
 ```powershell
 Get-Content logs\logs.txt -Tail 100
 ```
 
-## Publishing Safety
+## Публикация на GitHub
 
-This repository is safe to publish only because sensitive files are excluded.
+Репозиторий можно публиковать только без локальных секретов и данных.
 
-Before pushing changes, verify that these files are not staged:
+Перед push убедитесь, что в staged files нет:
 
 ```text
 .env
@@ -352,32 +357,32 @@ qa_screenshots/
 venv/
 ```
 
-The included publishing helper performs these checks:
+В проекте есть helper, который проверяет staged-файлы:
 
 ```powershell
 .\publish_to_github.ps1
 ```
 
-Commit and push after review:
+Коммит и публикация:
 
 ```powershell
 .\publish_to_github.ps1 -RepoUrl "https://github.com/sattop/username-studio.git" -Commit -Push
 ```
 
-## Current Defaults
+## Текущие настройки по умолчанию
 
-| Setting | Value |
+| Настройка | Значение |
 |---|---|
-| Username length | `5-6` characters |
-| Username alphabet | lowercase latin letters, `[a-z]` |
+| Длина username | `5-6` символов |
+| Алфавит username | lowercase latin `[a-z]` |
 | Score threshold | `6.0` |
-| Default database | `username_database.db` |
-| Default logs | `logs/logs.txt` |
-| Default web host | `127.0.0.1` |
-| Default web port | `8080` |
-| Default Telegram session | `telegram_session.session` |
+| База данных | `username_database.db` |
+| Логи | `logs/logs.txt` |
+| Web host | `127.0.0.1` |
+| Web port | `8080` |
+| Telegram session | `telegram_session.session` |
 
-## Repository
+## Репозиторий
 
 ```text
 https://github.com/sattop/username-studio
