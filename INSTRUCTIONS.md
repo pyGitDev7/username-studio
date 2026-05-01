@@ -97,6 +97,8 @@ python main.py
 
 Live-проверки на вкладке **Telegram** используют только аккаунты из `sessions/`. Если аккаунтов нет, добавьте их во вкладке **Аккаунты**; основной аккаунт из `.env` предназначен только для создания каналов.
 
+Команды запуска web-интерфейса не изменились: `python main.py` или `python web_app.py`. `web_app.py` теперь только совместимый launcher, а HTTP handler, API payload helpers, Telegram auth, task state и `INDEX_HTML` находятся в пакете `web/`.
+
 ## 6. Главное меню
 
 ```text

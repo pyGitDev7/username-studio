@@ -19,6 +19,13 @@ C:\path\to\telegram-username-generator
 | `storage.py` | SQLite-схема, миграции, статистика, запросы просмотра |
 | `utils.py` | Нормализация, валидация, эвристики, fallback helpers |
 | `logger.py` | Логи в консоль и `logs/logs.txt` |
+| `web_app.py` | Тонкий launcher web-интерфейса. `python web_app.py` работает как раньше |
+| `web/server.py` | Запуск `ThreadingHTTPServer`, host/port и browser heartbeat/shutdown |
+| `web/handlers.py` | `UsernameDashboardHandler`, `do_GET`, `do_POST`, JSON/HTML helpers |
+| `web/payloads.py` | API payload helpers, lazy storage/account manager, чистые helpers |
+| `web/telegram_auth.py` | Telegram auth flow, `.env` config save/reset, guard-функции |
+| `web/tasks.py` | Background task state и task runners |
+| `web/templates.py` | `INDEX_HTML` для dashboard |
 
 ## Документация
 
@@ -61,6 +68,8 @@ main.py
   в""в"Ђ TelegramChannelManager
        в""в"Ђ Telethon
 ```
+
+Web-интерфейс запускается прежними командами `python main.py` или `python web_app.py`. Пользовательское поведение не менялось: `web_app.py` остался совместимой точкой входа, а реализация dashboard разнесена по модулям в `web/`.
 
 ## SQLite
 
@@ -191,4 +200,3 @@ error
 - Проверка кандидатов фильтрует старые невалидные записи.
 - Создание канала блокируется для `used`, `invalid`, `checked_taken`.
 - FloodWait обрабатывается с ограничением повторов.
-

@@ -93,6 +93,8 @@ pytest -q
 - `account_manager.py`
 - `utils.py`
 - `config.py`
+- `web_app.py`
+- `web/`
 - `tests/`
 - `.github/workflows/ci.yml`
 - документация `.md`

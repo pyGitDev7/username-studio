@@ -20,6 +20,8 @@ python main.py --cli
 python web_app.py
 ```
 
+Поведение запуска не изменилось: `web_app.py` теперь тонкий launcher, а HTTP handler, API payload helpers, Telegram auth и `INDEX_HTML` перенесены в пакет `web/`.
+
 Короткая инструкция для актуальной версии генератора Telegram username.
 
 ## Главное

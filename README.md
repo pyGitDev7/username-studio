@@ -358,7 +358,8 @@ username_database.db
 |---|---|
 | `START.bat` | Запуск проекта одним файлом на Windows. |
 | `main.py` | Главная точка входа, переключение web/CLI, основной workflow. |
-| `web_app.py` | Локальная browser dashboard и HTTP API. |
+| `web_app.py` | Тонкая точка входа для локальной browser dashboard. Команда `python web_app.py` не изменилась. |
+| `web/` | Основная логика web-интерфейса: `server.py`, HTTP handler в `handlers.py`, API payload helpers в `payloads.py`, Telegram auth в `telegram_auth.py`, background tasks в `tasks.py`, `INDEX_HTML` в `templates.py`. |
 | `config.py` | Загрузка `.env` и константы проекта. |
 | `llm_generator.py` | LLM-генерация и fallback-генерация username. |
 | `llm_evaluator.py` | LLM-оценка и fallback-оценка. |

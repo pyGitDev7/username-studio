@@ -149,6 +149,17 @@ Telegram-действия должны быть безопасными:
 - only used;
 - only last batch.
 
+## Web-интерфейс
+
+- Команды запуска не изменились: `python web_app.py` или запуск через `main.py`.
+- `web_app.py` является тонкой совместимой точкой входа.
+- HTTP handler находится в `web/handlers.py`.
+- API payload helpers находятся в `web/payloads.py`.
+- Telegram auth логика находится в `web/telegram_auth.py`.
+- Background task state находится в `web/tasks.py`.
+- `INDEX_HTML` и шаблон dashboard находятся в `web/templates.py`.
+- Пользовательское поведение и внешний вид web-интерфейса не должны отличаться от прежней версии.
+
 ## Логи
 
 Логи:
