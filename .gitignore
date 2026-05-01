@@ -13,6 +13,7 @@
 *.bak
 logs/
 qa_screenshots/
+assets/
 
 # Python
 venv/
@@ -29,4 +30,3 @@ __pycache__/
 Thumbs.db
 .idea/
 .vscode/
-
