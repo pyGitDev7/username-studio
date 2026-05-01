@@ -27,6 +27,8 @@
 - Показывать расширенную статистику и списки базы.
 - Безопасно запускаться без Telegram через dry-run.
 - Проверять Telegram только после выбора соответствующего пункта меню.
+- Добавлять несколько Telegram-аккаунтов через web-вкладку **Аккаунты**.
+- Автоматически ротировать аккаунты при FloodWait/RPCError без потери username из очереди.
 
 ## Главное меню
 
@@ -36,8 +38,18 @@
 3. Создать канал для username
 4. Статистика и просмотр базы
 5. Переключить dry-run
-6. Выход
+6. Аккаунты Telegram
+7. Выход
 ```
+
+## Мульти-аккаунты Telegram
+
+- Аккаунты хранятся локально в `sessions/`.
+- Статусы аккаунтов: `active`, `cooldown`, `dead`.
+- `FloodWaitError` ставит cooldown на время из Telegram.
+- Обычный `RPCError` ставит cooldown на 120 секунд.
+- Ошибки авторизации помечают аккаунт как `dead`.
+- Если в `sessions/` нет аккаунтов, live-проверка использует старую сессию из `.env`.
 
 ## Просмотр базы
 
@@ -75,6 +87,7 @@ python main.py --no-telegram --dry-run --stats
 - `llm_generator.py`
 - `llm_evaluator.py`
 - `telegram_client.py`
+- `account_manager.py`
 - `utils.py`
 - `config.py`
 - документация `.md`
@@ -93,6 +106,7 @@ username_database.db
 username_database.db
 telegram_session.session
 telegram_session.session-journal
+sessions/
 ```
 
 ## Проверки, которые должны проходить
@@ -112,4 +126,4 @@ python main.py --no-telegram --dry-run --stats
 
 ## Актуализировано
 
-2026-04-30.
+2026-05-01.

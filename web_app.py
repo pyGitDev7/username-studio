@@ -23,6 +23,7 @@ from urllib.parse import parse_qs, urlparse
 
 import config
 import utils
+from account_manager import AccountManager
 from storage import UsernameStorage
 
 
@@ -34,6 +35,8 @@ MAX_TABLE_LIMIT = 200
 _storage: Optional[UsernameStorage] = None
 _storage_lock = threading.Lock()
 _telegram_session_lock = threading.RLock()
+_account_manager: Optional[AccountManager] = None
+_account_manager_lock = threading.RLock()
 
 _task_lock = threading.Lock()
 _tasks: Dict[str, Dict[str, Any]] = {}
@@ -52,6 +55,14 @@ def get_storage() -> UsernameStorage:
         if _storage is None:
             _storage = UsernameStorage(config.DATABASE_PATH)
         return _storage
+
+
+def get_account_manager() -> AccountManager:
+    global _account_manager
+    with _account_manager_lock:
+        if _account_manager is None:
+            _account_manager = AccountManager()
+        return _account_manager
 
 
 def now_iso() -> str:
@@ -601,7 +612,63 @@ def confirm_telegram_password(flow_id: str, password: str) -> Dict[str, Any]:
     return asyncio.run(confirm_telegram_password_async(flow_id, password))
 
 
+def get_accounts_payload() -> Dict[str, Any]:
+    manager = get_account_manager()
+    manager.load_accounts()
+    return {
+        "accounts": manager.list_accounts(),
+        "active_account": manager.get_active_account(),
+        "has_accounts": manager.has_accounts(),
+    }
+
+
+def account_auth_action(payload: Dict[str, Any]) -> Dict[str, Any]:
+    manager = get_account_manager()
+    action = str(payload.get("action") or "start").strip().lower()
+
+    if action == "start":
+        auth = asyncio.run(manager.start_auth(
+            payload.get("api_id"),
+            payload.get("api_hash"),
+            payload.get("phone") or "",
+        ))
+    elif action == "code":
+        auth = asyncio.run(manager.confirm_code(
+            payload.get("flow_id") or "",
+            payload.get("code") or "",
+        ))
+    elif action == "password":
+        auth = asyncio.run(manager.confirm_password(
+            payload.get("flow_id") or "",
+            payload.get("password") or "",
+        ))
+    elif action == "cancel":
+        auth = {"cancelled": manager.cancel_auth(payload.get("flow_id") or "")}
+    else:
+        raise ValueError("Неизвестное действие авторизации аккаунта")
+
+    result = get_accounts_payload()
+    result["auth"] = auth
+    return result
+
+
+def delete_account_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    account_id = str(payload.get("account_id") or "").strip()
+    if not account_id:
+        account_id = utils.normalize_phone(str(payload.get("phone") or ""))
+    if not account_id:
+        raise ValueError("Не указан аккаунт для удаления")
+
+    deleted = get_account_manager().delete_account(account_id)
+    result = get_accounts_payload()
+    result["deleted"] = deleted
+    return result
+
+
 def require_telegram_authorized() -> Optional[Dict[str, Any]]:
+    if get_account_manager().has_accounts():
+        return None
+
     status = get_telegram_auth_status()
     if status.get("authorized") and status.get("ready", True):
         return None
@@ -758,6 +825,7 @@ def run_telegram_check_task(task_id: str, candidates: List[Dict[str, Any]]) -> N
 
     update_task(task_id, progress=5, message="Подключение к Telegram")
     system = UsernameGenerationSystem(dry_run=False, no_telegram=False)
+    system.account_manager = get_account_manager()
 
     async def check() -> Dict[str, Dict[str, Any]]:
         try:
@@ -766,10 +834,11 @@ def run_telegram_check_task(task_id: str, candidates: List[Dict[str, Any]]) -> N
             def on_checked(username: str, details: Dict[str, Any], index: int, total: int) -> None:
                 progress = 20 + int((index / max(total, 1)) * 70)
                 status = details.get("status") or ("available" if details.get("available") else "checked_taken")
+                account_phone = details.get("account_phone") or "-"
                 update_task(
                     task_id,
                     progress=min(progress, 95),
-                    message=f"Проверено {index}/{total}: @{username} ({status})",
+                    message=f"Проверено {index}/{total}: @{username} ({status}) через {account_phone}",
                 )
 
             return await system.check_availability_batch(candidates, progress_callback=on_checked)
@@ -908,6 +977,8 @@ class UsernameDashboardHandler(BaseHTTPRequestHandler):
                 self._send_json({"stats": stats})
             elif parsed.path == "/api/usernames":
                 self._send_json(get_usernames_payload(query))
+            elif parsed.path == "/api/accounts":
+                self._send_json(get_accounts_payload())
             elif parsed.path == "/api/telegram/auth/status":
                 self._send_json({"auth": get_telegram_auth_status()})
             elif parsed.path == "/api/telegram/config":
@@ -966,6 +1037,12 @@ class UsernameDashboardHandler(BaseHTTPRequestHandler):
                     self._send_json({"error": "task_already_running", "active": active}, HTTPStatus.CONFLICT)
                 else:
                     self._send_json({"task": task}, HTTPStatus.ACCEPTED)
+
+            elif parsed.path == "/api/accounts/auth":
+                self._send_json(account_auth_action(payload), HTTPStatus.ACCEPTED)
+
+            elif parsed.path == "/api/accounts/delete":
+                self._send_json(delete_account_payload(payload))
 
             elif parsed.path == "/api/telegram/auth/start":
                 auth = start_telegram_auth(payload.get("phone") or "")
@@ -1152,6 +1229,7 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html { overflow-x: hidden; }
     body {
       margin: 0;
@@ -1503,6 +1581,9 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     .badge.available { border-color: #bbf7d0; background: #ecfdf3; color: var(--green); }
+    .badge.active { border-color: #bbf7d0; background: #ecfdf3; color: var(--green); }
+    .badge.cooldown { border-color: #fed7aa; background: #fff7ed; color: var(--amber); }
+    .badge.dead { border-color: #fecaca; background: #fef2f2; color: var(--red); }
     .badge.unchecked { border-color: #bfdbfe; background: #eff6ff; color: var(--blue); }
     .badge.used { border-color: #ddd6fe; background: #f5f3ff; color: var(--violet); }
     .badge.invalid, .badge.checked_taken, .badge.error { border-color: #fecaca; background: #fef2f2; color: var(--red); }
@@ -1602,6 +1683,14 @@ INDEX_HTML = r"""<!doctype html>
       margin-top: 10px;
     }
 
+    .accounts-auth {
+      grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
+    }
+
+    .accounts-auth .auth-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     @media (max-width: 1040px) {
       .split { grid-template-columns: 1fr; }
       .auth-panel { grid-template-columns: 1fr; }
@@ -1644,6 +1733,7 @@ INDEX_HTML = r"""<!doctype html>
         <button data-tab="generation">Генерация</button>
         <button data-tab="database">База</button>
         <button data-tab="telegram">Telegram</button>
+        <button data-tab="accounts">Аккаунты</button>
         <button data-tab="channels">Канал</button>
         <button data-tab="logs">Логи</button>
       </nav>
@@ -1691,6 +1781,13 @@ INDEX_HTML = r"""<!doctype html>
             <h2 class="section-title">Генерация</h2>
             <div class="section-meta">LM Studio + локальная оценка, без Telegram-действий</div>
           </div>
+        </div>
+        <div class="panel" style="margin-bottom:14px">
+          <div class="status-line" style="margin:0">
+            <span>Активный аккаунт ротации</span>
+            <span id="rotationAccountBadge" class="badge warn">loading</span>
+          </div>
+          <div id="rotationAccountDetails" class="section-meta" style="margin-top:8px">Проверка списка аккаунтов...</div>
         </div>
         <div class="toolbar">
           <label>Размер batch
@@ -1850,6 +1947,59 @@ INDEX_HTML = r"""<!doctype html>
         </div>
       </section>
 
+      <section id="accounts" class="section">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Аккаунты</h2>
+            <div class="section-meta" id="accountsMeta">Мульти-аккаунты для ротации live-проверок</div>
+          </div>
+          <button class="btn primary" id="accountAddBtn">+ Добавить</button>
+        </div>
+        <div class="auth-panel accounts-auth" id="accountsAuthPanel">
+          <div class="panel">
+            <div class="status-line" style="margin:0">
+              <span>Новый аккаунт</span>
+              <span id="accountAuthBadge" class="badge warn">not started</span>
+            </div>
+            <div class="auth-actions config-actions">
+              <label>API ID
+                <input id="accountApiId" inputmode="numeric" autocomplete="off" placeholder="1234567">
+              </label>
+              <label>API HASH
+                <input id="accountApiHash" type="password" autocomplete="off" placeholder="api_hash">
+              </label>
+              <label>Телефон
+                <input id="accountPhone" autocomplete="tel" placeholder="+79990000000">
+              </label>
+              <button class="btn primary" id="accountSendCode">Отправить код</button>
+            </div>
+            <div class="section-meta" id="accountAuthMessage" style="margin-top:10px">API ID, API Hash и телефон сохраняются локально в sessions после успешного входа.</div>
+          </div>
+          <div class="panel">
+            <div class="status-line" style="margin:0 0 10px">
+              <span>Подтверждение входа</span>
+            </div>
+            <div class="auth-actions">
+              <label>Код Telegram
+                <input id="accountCode" inputmode="numeric" autocomplete="one-time-code" placeholder="12345">
+              </label>
+              <button class="btn primary" id="accountConfirmCode">Войти</button>
+              <label id="accountPasswordLabel" hidden>2FA пароль
+                <input id="accountPassword" type="password" autocomplete="current-password" placeholder="если включен">
+              </label>
+              <button class="btn" id="accountConfirmPassword" hidden>Подтвердить 2FA</button>
+              <button class="btn" id="accountCancelAuth">Сбросить вход</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>телефон</th><th>status</th><th>cooldown</th><th>user</th><th>last error</th><th></th></tr></thead>
+            <tbody id="accountsRows"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="channels" class="section">
         <div class="section-head">
           <div>
@@ -1911,7 +2061,7 @@ INDEX_HTML = r"""<!doctype html>
   <script>
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => Array.from(document.querySelectorAll(selector));
-    const app = { config: {}, selectedChannel: null, telegramPreview: null, authFlowId: null };
+    const app = { config: {}, selectedChannel: null, telegramPreview: null, authFlowId: null, accountAuthFlowId: null };
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -1959,6 +2109,203 @@ INDEX_HTML = r"""<!doctype html>
 
     function setProgress(id, value) {
       $(id).style.width = `${Math.max(0, Math.min(100, Number(value) || 0))}%`;
+    }
+
+    function fmtCooldown(value) {
+      const seconds = Number(value || 0);
+      if (seconds <= 0) return "-";
+      const minutes = Math.floor(seconds / 60);
+      const rest = seconds % 60;
+      return minutes ? `${minutes}m ${rest}s` : `${rest}s`;
+    }
+
+    function accountUserText(account) {
+      const user = account?.user || {};
+      const username = user.username ? `@${user.username}` : "без username";
+      const name = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+      return name ? `${name} · ${username}` : username;
+    }
+
+    function renderRotationAccount(data) {
+      const active = data.active_account;
+      const badgeEl = $("#rotationAccountBadge");
+      badgeEl.className = "badge";
+      if (!data.has_accounts) {
+        badgeEl.classList.add("warn");
+        badgeEl.textContent = "fallback";
+        $("#rotationAccountDetails").textContent = "Мульти-аккаунты не добавлены. Live-проверка использует старую Telegram-сессию из .env.";
+        return;
+      }
+      if (!active) {
+        badgeEl.classList.add("warn");
+        badgeEl.textContent = "waiting";
+        $("#rotationAccountDetails").textContent = "Аккаунты загружены, активный появится после старта live-проверки.";
+        return;
+      }
+      badgeEl.classList.add(active.status || "active");
+      badgeEl.textContent = active.status || "active";
+      const cooldown = active.cooldown_remaining ? ` · cooldown ${fmtCooldown(active.cooldown_remaining)}` : "";
+      $("#rotationAccountDetails").textContent = `${active.phone || "-"} · ${accountUserText(active)}${cooldown}`;
+    }
+
+    function renderAccounts(data) {
+      const accounts = data.accounts || [];
+      $("#accountsMeta").textContent = accounts.length
+        ? `Загружено аккаунтов: ${accounts.length}`
+        : "Мульти-аккаунты не добавлены";
+      renderRotationAccount(data);
+      $("#accountsRows").innerHTML = accounts.length ? accounts.map((account) => `
+        <tr>
+          <td class="mono">${escapeHtml(account.phone || "-")}</td>
+          <td>${badge(account.status || "active")}</td>
+          <td>${escapeHtml(fmtCooldown(account.cooldown_remaining))}</td>
+          <td>${escapeHtml(accountUserText(account))}</td>
+          <td class="notes">${escapeHtml(account.last_error || "")}</td>
+          <td><button class="btn danger" data-delete-account="${escapeHtml(account.account_id)}">Удалить</button></td>
+        </tr>
+      `).join("") : `<tr><td colspan="6" class="empty">Нет аккаунтов</td></tr>`;
+      $$("[data-delete-account]").forEach((button) => button.addEventListener("click", () => deleteAccount(button.dataset.deleteAccount)));
+    }
+
+    async function loadAccounts() {
+      const data = await api("/api/accounts");
+      renderAccounts(data);
+      return data;
+    }
+
+    function resetAccountAuthForm(clearCredentials = false) {
+      app.accountAuthFlowId = null;
+      $("#accountCode").value = "";
+      $("#accountPassword").value = "";
+      $("#accountPasswordLabel").hidden = true;
+      $("#accountConfirmPassword").hidden = true;
+      if (clearCredentials) {
+        $("#accountApiId").value = "";
+        $("#accountApiHash").value = "";
+        $("#accountPhone").value = "";
+      }
+    }
+
+    function setAccountAuthBadge(status) {
+      const badgeEl = $("#accountAuthBadge");
+      badgeEl.className = "badge";
+      badgeEl.classList.add(status === "authorized" ? "active" : "warn");
+      badgeEl.textContent = status;
+    }
+
+    async function startAccountAuth() {
+      setAccountAuthBadge("sending");
+      $("#accountAuthMessage").textContent = "Отправка кода Telegram...";
+      try {
+        const data = await api("/api/accounts/auth", {
+          method: "POST",
+          body: JSON.stringify({
+            action: "start",
+            api_id: $("#accountApiId").value.trim(),
+            api_hash: $("#accountApiHash").value.trim(),
+            phone: $("#accountPhone").value.trim()
+          })
+        });
+        const auth = data.auth || {};
+        if (auth.authorized || auth.already_authorized) {
+          resetAccountAuthForm(true);
+          setAccountAuthBadge("authorized");
+          $("#accountAuthMessage").textContent = "Аккаунт авторизован и готов к ротации.";
+        } else {
+          app.accountAuthFlowId = auth.flow_id;
+          setAccountAuthBadge("code sent");
+          $("#accountAuthMessage").textContent = `Код отправлен на ${auth.phone || "телефон"}. Введите код справа.`;
+        }
+        renderAccounts(data);
+      } catch (error) {
+        setAccountAuthBadge("error");
+        $("#accountAuthMessage").textContent = error.data?.message || error.data?.error || error.message;
+      }
+    }
+
+    async function confirmAccountCode() {
+      if (!app.accountAuthFlowId) {
+        $("#accountAuthMessage").textContent = "Сначала отправьте код.";
+        return;
+      }
+      setAccountAuthBadge("checking");
+      try {
+        const data = await api("/api/accounts/auth", {
+          method: "POST",
+          body: JSON.stringify({
+            action: "code",
+            flow_id: app.accountAuthFlowId,
+            code: $("#accountCode").value.trim()
+          })
+        });
+        const auth = data.auth || {};
+        $("#accountCode").value = "";
+        if (auth.password_required) {
+          $("#accountPasswordLabel").hidden = false;
+          $("#accountConfirmPassword").hidden = false;
+          setAccountAuthBadge("2FA");
+          $("#accountAuthMessage").textContent = auth.message || "Введите 2FA-пароль.";
+          return;
+        }
+        resetAccountAuthForm(true);
+        setAccountAuthBadge("authorized");
+        $("#accountAuthMessage").textContent = "Аккаунт добавлен.";
+        renderAccounts(data);
+      } catch (error) {
+        setAccountAuthBadge("error");
+        $("#accountAuthMessage").textContent = error.data?.message || error.data?.error || error.message;
+      }
+    }
+
+    async function confirmAccountPassword() {
+      if (!app.accountAuthFlowId) {
+        $("#accountAuthMessage").textContent = "Нет активного входа.";
+        return;
+      }
+      setAccountAuthBadge("checking");
+      try {
+        const data = await api("/api/accounts/auth", {
+          method: "POST",
+          body: JSON.stringify({
+            action: "password",
+            flow_id: app.accountAuthFlowId,
+            password: $("#accountPassword").value
+          })
+        });
+        resetAccountAuthForm(true);
+        setAccountAuthBadge("authorized");
+        $("#accountAuthMessage").textContent = "Аккаунт добавлен.";
+        renderAccounts(data);
+      } catch (error) {
+        $("#accountPassword").value = "";
+        setAccountAuthBadge("error");
+        $("#accountAuthMessage").textContent = error.data?.message || error.data?.error || error.message;
+      }
+    }
+
+    async function cancelAccountAuth() {
+      if (app.accountAuthFlowId) {
+        await api("/api/accounts/auth", {
+          method: "POST",
+          body: JSON.stringify({ action: "cancel", flow_id: app.accountAuthFlowId })
+        }).catch(() => {});
+      }
+      resetAccountAuthForm(false);
+      setAccountAuthBadge("not started");
+      $("#accountAuthMessage").textContent = "Вход сброшен.";
+    }
+
+    async function deleteAccount(accountId) {
+      if (!confirm("Удалить аккаунт и его локальную сессию?")) return;
+      try {
+        const data = await api("/api/accounts/delete", {
+          method: "POST",
+          body: JSON.stringify({ account_id: accountId })
+        });
+        renderAccounts(data);
+      } catch (error) {
+        $("#accountsMeta").textContent = error.data?.message || error.data?.error || error.message;
+      }
     }
 
     async function loadConfig() {
@@ -2330,6 +2677,7 @@ INDEX_HTML = r"""<!doctype html>
     function renderTelegramTask(task) {
       $("#telegramStatus").textContent = task.message || task.status;
       setProgress("#telegramProgress", task.progress || 0);
+      loadAccounts().catch(() => {});
       if (task.status === "completed" && task.result) {
         $("#telegramRows").innerHTML = (task.result.rows || []).map((row) => `
           <tr>
@@ -2451,6 +2799,18 @@ INDEX_HTML = r"""<!doctype html>
       $("#tgPreviewBtn").addEventListener("click", loadTelegramPreview);
       $("#tgCheckBtn").addEventListener("click", checkTelegramSelected);
       $("#tgDryRun").addEventListener("change", syncTelegramMode);
+      $("#accountAddBtn").addEventListener("click", () => {
+        resetAccountAuthForm(true);
+        setAccountAuthBadge("not started");
+        $("#accountAuthMessage").textContent = "Введите API ID, API Hash и телефон.";
+        $("#accountApiId").focus();
+      });
+      $("#accountSendCode").addEventListener("click", startAccountAuth);
+      $("#accountConfirmCode").addEventListener("click", confirmAccountCode);
+      $("#accountConfirmPassword").addEventListener("click", confirmAccountPassword);
+      $("#accountCancelAuth").addEventListener("click", cancelAccountAuth);
+      $("#accountCode").addEventListener("keydown", (event) => { if (event.key === "Enter") confirmAccountCode(); });
+      $("#accountPassword").addEventListener("keydown", (event) => { if (event.key === "Enter") confirmAccountPassword(); });
       $("#loadChannels").addEventListener("click", loadChannels);
       $("#createChannelBtn").addEventListener("click", createChannel);
       $("#refreshLogs").addEventListener("click", loadLogs);
@@ -2460,7 +2820,7 @@ INDEX_HTML = r"""<!doctype html>
       bindEvents();
       syncTelegramMode();
       await loadConfig();
-      await Promise.all([loadDashboard(), loadDatabase(), loadTelegramConfig(), loadTelegramAuthStatus(), loadTelegramPreview(), loadChannels(), loadLogs()]);
+      await Promise.all([loadDashboard(), loadDatabase(), loadTelegramConfig(), loadTelegramAuthStatus(), loadAccounts(), loadTelegramPreview(), loadChannels(), loadLogs()]);
     }
 
     init().catch((error) => {
