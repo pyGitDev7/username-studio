@@ -629,29 +629,780 @@ INDEX_HTML = r"""<!doctype html>
       .stats-grid { grid-template-columns: 1fr; }
       .section-title { font-size: 24px; }
     }
+
+    /* SaaS polish pass: shared tokens and component refinements. */
+    :root {
+      --background: #f5f7fa;
+      --surface: #ffffff;
+      --surface-raised: #ffffff;
+      --surface-subtle: #f8fafc;
+      --surface-muted: #eef2f6;
+      --text: #17202e;
+      --text-strong: #0f1724;
+      --muted: #667085;
+      --muted-strong: #475467;
+      --border: #d8e0ea;
+      --border-strong: #c4cedb;
+      --accent: #0f766e;
+      --accent-strong: #0b5f59;
+      --accent-soft: #e7f6f3;
+      --accent-line: #8fd6c8;
+      --success: #16784c;
+      --success-soft: #ecfdf3;
+      --warn: #a05a08;
+      --warn-soft: #fff7ed;
+      --danger: #b42318;
+      --danger-soft: #fff1f0;
+      --info: #2563eb;
+      --info-soft: #eff6ff;
+      --purple: #6d28d9;
+      --purple-soft: #f4f0ff;
+      --sidebar: #0e1621;
+      --sidebar-soft: #151f2b;
+      --sidebar-raised: #1b2634;
+      --sidebar-text: #f5f8fb;
+      --sidebar-muted: #a7b4c5;
+      --shadow: 0 18px 44px rgba(16, 24, 40, 0.08);
+      --shadow-soft: 0 8px 20px rgba(16, 24, 40, 0.06);
+      --focus: 0 0 0 3px rgba(15, 118, 110, 0.18);
+      --radius-sm: 6px;
+      --radius: 8px;
+      --radius-lg: 10px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --bg: var(--background);
+      --panel: var(--surface);
+      --panel-soft: var(--surface-subtle);
+      --line: var(--border);
+      --line-strong: var(--border-strong);
+      --blue: var(--info);
+      --green: var(--success);
+      --red: var(--danger);
+      --amber: var(--warn);
+      --violet: var(--purple);
+    }
+
+    body {
+      background: var(--background);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 0;
+      box-shadow: var(--focus);
+    }
+
+    .app {
+      grid-template-columns: 264px minmax(0, 1fr);
+      background: var(--background);
+    }
+
+    .sidebar {
+      padding: 20px 14px 16px;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 34%),
+        var(--sidebar);
+    }
+
+    .brand {
+      justify-content: flex-start;
+      margin-bottom: 18px;
+      padding: 4px 6px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(143, 214, 200, 0.34);
+      border-radius: var(--radius);
+      background: rgba(15, 118, 110, 0.18);
+      color: #d9fff7;
+      font-size: 12px;
+      font-weight: 820;
+    }
+
+    .brand-copy {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .brand h1 {
+      color: var(--sidebar-text);
+      font-size: 17px;
+      font-weight: 760;
+    }
+
+    .brand-copy span {
+      color: var(--sidebar-muted);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .brand .pill {
+      margin-left: auto;
+      border-color: rgba(143, 214, 200, 0.28);
+      background: rgba(15, 118, 110, 0.16);
+      color: #c8fff2;
+      font-size: 11px;
+      font-weight: 720;
+    }
+
+    .nav {
+      gap: 4px;
+    }
+
+    .nav button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 38px;
+      padding: 9px 10px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      color: var(--sidebar-muted);
+      font-size: 13px;
+      font-weight: 680;
+      transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+    }
+
+    .nav button::before {
+      content: attr(data-icon);
+      display: grid;
+      place-items: center;
+      flex: 0 0 22px;
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.05);
+      color: currentColor;
+      font-size: 11px;
+      font-weight: 760;
+      opacity: 1;
+      vertical-align: 0;
+    }
+
+    .nav button:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--sidebar-text);
+      transform: translateX(1px);
+    }
+
+    .nav button.is-active {
+      border-color: rgba(143, 214, 200, 0.22);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--sidebar-text);
+      box-shadow: inset 3px 0 0 var(--accent-line);
+    }
+
+    .nav button.is-active::before {
+      border-color: rgba(143, 214, 200, 0.38);
+      background: rgba(15, 118, 110, 0.28);
+      color: #d8fff6;
+    }
+
+    .donation-cta {
+      min-height: 92px;
+      margin: auto 2px 0;
+      padding: 14px 14px 14px 54px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035)),
+        var(--sidebar-raised);
+      color: var(--sidebar-text);
+      box-shadow: none;
+      transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+    }
+
+    .donation-cta::before {
+      display: none;
+      animation: none;
+    }
+
+    .donation-cta::after {
+      content: "DA";
+      position: absolute;
+      inset: 16px auto auto 14px;
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgba(251, 191, 36, 0.38);
+      border-radius: var(--radius-sm);
+      background: rgba(251, 191, 36, 0.12);
+      color: #ffe3a3;
+      font-size: 11px;
+      font-weight: 820;
+    }
+
+    .donation-cta:hover {
+      border-color: rgba(251, 191, 36, 0.32);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.045)),
+        var(--sidebar-raised);
+      box-shadow: none;
+      filter: none;
+      transform: translateY(-1px);
+    }
+
+    .donation-cta:focus-visible {
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+    }
+
+    .donation-cta__label {
+      color: #f7c96d;
+      font-size: 11px;
+      font-weight: 760;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .donation-cta__title {
+      color: var(--sidebar-text);
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .donation-cta__hint {
+      color: var(--sidebar-muted);
+      font-size: 12px;
+      font-weight: 560;
+    }
+
+    main {
+      padding: 28px 30px 40px;
+    }
+
+    .section {
+      max-width: 1280px;
+    }
+
+    .section-head {
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      color: var(--text-strong);
+      font-size: 25px;
+      font-weight: 740;
+    }
+
+    .section-meta {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin: 0 0 10px;
+    }
+
+    .panel-title {
+      margin: 0;
+      color: var(--text-strong);
+      font-size: 17px;
+      line-height: 1.25;
+      font-weight: 730;
+    }
+
+    .panel-caption {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .card,
+    .panel,
+    .toolbar,
+    .table-wrap {
+      border-color: var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .stats-grid {
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(182px, 1fr));
+    }
+
+    .stat-card {
+      min-height: 104px;
+      padding: 16px 16px 15px 18px;
+      background: var(--surface-raised);
+    }
+
+    .stat-card::before {
+      width: 3px;
+      opacity: 0.92;
+    }
+
+    .stat-label {
+      color: var(--muted-strong);
+      font-size: 11px;
+      font-weight: 720;
+      line-height: 1.3;
+    }
+
+    .stat-value {
+      color: var(--text-strong);
+      font-size: 28px;
+      font-weight: 760;
+    }
+
+    .toolbar {
+      align-items: end;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    label {
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 38px;
+      border-color: var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    input::placeholder {
+      color: #98a2b3;
+    }
+
+    input:hover,
+    select:hover {
+      border-color: var(--border-strong);
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: var(--focus);
+    }
+
+    .check-label {
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    input[type="checkbox"] {
+      width: 16px;
+      min-width: 16px;
+      accent-color: var(--accent);
+    }
+
+    .btn {
+      min-height: 38px;
+      border-color: var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 1px 1px rgba(16, 24, 40, 0.04);
+    }
+
+    .btn:hover {
+      border-color: var(--border-strong);
+      background: var(--surface-subtle);
+      box-shadow: 0 6px 14px rgba(16, 24, 40, 0.06);
+    }
+
+    .btn.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn.primary:hover {
+      background: var(--accent-strong);
+    }
+
+    .btn.danger {
+      border-color: #f2b6ae;
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .btn:disabled,
+    .btn:disabled:hover {
+      transform: none;
+      box-shadow: none;
+      opacity: 0.58;
+    }
+
+    .table-wrap .btn {
+      min-height: 32px;
+      padding: 6px 10px;
+    }
+
+    .split {
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
+      gap: 16px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    table {
+      min-width: 760px;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom-color: var(--border);
+    }
+
+    th {
+      background: var(--surface-subtle);
+      color: var(--muted-strong);
+      font-size: 11px;
+      font-weight: 760;
+      text-transform: uppercase;
+    }
+
+    tbody tr {
+      transition: background 120ms ease;
+    }
+
+    tbody tr:hover {
+      background: #f9fbfd;
+    }
+
+    .mono {
+      color: var(--text-strong);
+      font-size: 12.5px;
+      font-weight: 650;
+    }
+
+    .badge {
+      gap: 6px;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-color: var(--border);
+      background: var(--surface-subtle);
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .badge::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.76;
+    }
+
+    .badge.available,
+    .badge.active {
+      border-color: #b7e7ca;
+      background: var(--success-soft);
+      color: var(--success);
+    }
+
+    .badge.cooldown,
+    .badge.warn {
+      border-color: #fed7aa;
+      background: var(--warn-soft);
+      color: var(--warn);
+    }
+
+    .badge.dead,
+    .badge.invalid,
+    .badge.checked_taken,
+    .badge.error {
+      border-color: #fecaca;
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .badge.unchecked {
+      border-color: #bfd7ff;
+      background: var(--info-soft);
+      color: var(--info);
+    }
+
+    .badge.used {
+      border-color: #ddd6fe;
+      background: var(--purple-soft);
+      color: var(--purple);
+    }
+
+    .status-line {
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .progress {
+      height: 8px;
+      background: var(--surface-muted);
+    }
+
+    .progress > div {
+      background: linear-gradient(90deg, var(--accent), #16a34a);
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-state {
+      display: grid;
+      gap: 4px;
+      justify-items: center;
+      padding: 6px 0;
+      color: var(--muted);
+      white-space: normal;
+    }
+
+    .empty-state strong {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 730;
+    }
+
+    .empty-state span {
+      max-width: 420px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .mode-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .mode-cell {
+      display: grid;
+      gap: 4px;
+      min-height: 74px;
+      padding: 13px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .mode-cell span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .mode-cell strong {
+      color: var(--text-strong);
+      font-size: 14px;
+      font-weight: 740;
+      line-height: 1.25;
+    }
+
+    .mode-cell.is-warn {
+      border-color: #fed7aa;
+      background: #fffbf5;
+    }
+
+    .auth-panel {
+      gap: 14px;
+    }
+
+    .auth-summary .btn {
+      width: max-content;
+    }
+
+    .log-box {
+      border-color: #1f2937;
+      background: #0d1420;
+      color: #dbe4ef;
+      font-size: 12.5px;
+      line-height: 1.55;
+      box-shadow: var(--shadow-soft);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @media (max-width: 1040px) {
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .mode-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        padding: 14px;
+      }
+
+      .brand {
+        padding-bottom: 12px;
+      }
+
+      .nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .nav button {
+        min-height: 40px;
+      }
+
+      .donation-cta {
+        margin-top: 12px;
+      }
+
+      main {
+        padding: 18px 14px 28px;
+      }
+
+      .section-head {
+        display: grid;
+        gap: 12px;
+      }
+
+      .section-head .btn {
+        width: 100%;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      label,
+      .btn {
+        min-width: 0;
+      }
+
+      .mode-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .auth-summary .btn {
+        width: 100%;
+      }
+
+      table {
+        min-width: 680px;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .brand {
+        align-items: flex-start;
+      }
+
+      .brand .pill {
+        display: none;
+      }
+
+      .nav {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .nav {
+        grid-template-columns: 1fr;
+      }
+
+      .section-title {
+        font-size: 23px;
+      }
+
+      .stat-card {
+        min-height: 92px;
+      }
+
+      .donation-cta {
+        min-height: 84px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <h1>Username Studio</h1>
+        <div class="brand-mark">US</div>
+        <div class="brand-copy">
+          <h1>Username Studio</h1>
+          <span>Telegram username tool</span>
+        </div>
         <span class="pill">local</span>
       </div>
       <nav class="nav" aria-label="Навигация">
-        <button class="is-active" data-tab="dashboard">Dashboard</button>
-        <button data-tab="generation">Генерация</button>
-        <button data-tab="database">База</button>
-        <button data-tab="telegram">Telegram</button>
-        <button data-tab="accounts">Аккаунты</button>
-        <button data-tab="channels">Канал</button>
-        <button data-tab="logs">Логи</button>
+        <button class="is-active" data-tab="dashboard" data-icon="D">Dashboard</button>
+        <button data-tab="generation" data-icon="G">Генерация</button>
+        <button data-tab="database" data-icon="B">База</button>
+        <button data-tab="telegram" data-icon="T">Telegram</button>
+        <button data-tab="accounts" data-icon="A">Аккаунты</button>
+        <button data-tab="channels" data-icon="C">Канал</button>
+        <button data-tab="logs" data-icon="L">Логи</button>
       </nav>
       <a class="donation-cta" href="https://www.donationalerts.com/r/sattop02" target="_blank" rel="noopener noreferrer" aria-label="Поддержать проект через DonationAlerts">
         <span class="donation-cta__copy">
           <span class="donation-cta__label">DonationAlerts</span>
-          <span class="donation-cta__title">Поддержать проект</span>
-          <span class="donation-cta__hint">жми, если Username Studio выручает</span>
+          <span class="donation-cta__title">Поддержать Username Studio</span>
+          <span class="donation-cta__hint">спокойный вклад в развитие</span>
         </span>
       </a>
     </aside>
@@ -668,8 +1419,9 @@ INDEX_HTML = r"""<!doctype html>
         <div class="grid stats-grid" id="statsGrid"></div>
         <div class="split">
           <div>
-            <div class="section-head">
-              <h3 class="section-title" style="font-size:18px">Последний batch</h3>
+            <div class="panel-heading">
+              <h3 class="panel-title">Последний batch</h3>
+              <span class="panel-caption">последние 10</span>
             </div>
             <div class="table-wrap">
               <table>
@@ -679,8 +1431,9 @@ INDEX_HTML = r"""<!doctype html>
             </div>
           </div>
           <div>
-            <div class="section-head">
-              <h3 class="section-title" style="font-size:18px">Available top</h3>
+            <div class="panel-heading">
+              <h3 class="panel-title">Available top</h3>
+              <span class="panel-caption">score desc</span>
             </div>
             <div class="table-wrap">
               <table style="min-width:420px">
@@ -774,6 +1527,24 @@ INDEX_HTML = r"""<!doctype html>
           <div>
             <h2 class="section-title">Telegram-проверка</h2>
             <div class="section-meta" id="telegramMeta">Проверка идет только через аккаунты из вкладки Аккаунты</div>
+          </div>
+        </div>
+        <div class="mode-strip" aria-label="Telegram режимы">
+          <div class="mode-cell">
+            <span>Основной аккаунт</span>
+            <strong>создание каналов</strong>
+          </div>
+          <div class="mode-cell">
+            <span>Live-проверка</span>
+            <strong>только sessions/</strong>
+          </div>
+          <div class="mode-cell">
+            <span>Режим</span>
+            <strong id="tgModeLabel">dry-run</strong>
+          </div>
+          <div class="mode-cell is-warn">
+            <span>Confirm</span>
+            <strong id="tgConfirmState">CHECK для live</strong>
           </div>
         </div>
         <div class="auth-panel">
@@ -1139,7 +1910,7 @@ INDEX_HTML = r"""<!doctype html>
           <td class="notes">${escapeHtml(account.last_error || "")}</td>
           <td><button class="btn danger" data-delete-account="${escapeHtml(account.account_id)}">Удалить</button></td>
         </tr>
-      `).join("") : `<tr><td colspan="6" class="empty">Нет аккаунтов</td></tr>`;
+      `).join("") : `<tr><td colspan="6" class="empty"><div class="empty-state"><strong>Нет аккаунтов для live-проверки</strong><span>Добавьте аккаунт здесь; основной аккаунт создания в live-check не участвует.</span></div></td></tr>`;
       $$("[data-delete-account]").forEach((button) => button.addEventListener("click", () => deleteAccount(button.dataset.deleteAccount)));
     }
 
@@ -1326,12 +2097,12 @@ INDEX_HTML = r"""<!doctype html>
       const last = await api("/api/usernames?last_batch=1&limit=10");
       $("#lastBatchRows").innerHTML = last.rows.length
         ? last.rows.map((row) => rowHtml(row)).join("")
-        : `<tr><td colspan="5" class="empty">Нет данных</td></tr>`;
+        : `<tr><td colspan="5" class="empty"><div class="empty-state"><strong>Нет данных batch</strong><span>Новый batch появится после генерации.</span></div></td></tr>`;
 
       const available = await api("/api/usernames?status=available&valid_only=1&limit=10");
       $("#availableTopRows").innerHTML = available.rows.length
         ? available.rows.map((row) => `<tr><td class="mono">@${escapeHtml(row.username)}</td><td>${fmtScore(row.score)}</td><td>${escapeHtml(row.generation_type || "-")}</td></tr>`).join("")
-        : `<tr><td colspan="3" class="empty">Нет данных</td></tr>`;
+        : `<tr><td colspan="3" class="empty"><div class="empty-state"><strong>Нет available username</strong><span>После live-проверки доступные username появятся здесь.</span></div></td></tr>`;
     }
 
     async function loadDatabase() {
@@ -1353,7 +2124,7 @@ INDEX_HTML = r"""<!doctype html>
           <td>${escapeHtml(row.checked_at || "-")}</td>
           <td class="notes">${escapeHtml(row.notes || "")}</td>
         </tr>
-      `).join("") : `<tr><td colspan="7" class="empty">Нет данных</td></tr>`;
+      `).join("") : `<tr><td colspan="7" class="empty"><div class="empty-state"><strong>Ничего не найдено</strong><span>Измените фильтры или выполните генерацию.</span></div></td></tr>`;
     }
 
     async function startGeneration() {
@@ -1387,10 +2158,10 @@ INDEX_HTML = r"""<!doctype html>
         const rows = task.result.rows || [];
         $("#generationRows").innerHTML = rows.length
           ? rows.map((row) => rowHtml(row)).join("")
-          : `<tr><td colspan="5" class="empty">Нет результатов</td></tr>`;
+          : `<tr><td colspan="5" class="empty"><div class="empty-state"><strong>Нет результатов</strong><span>Генерация завершилась без новых username.</span></div></td></tr>`;
       }
       if (task.status === "failed") {
-        $("#generationRows").innerHTML = `<tr><td colspan="5" class="empty">${escapeHtml(task.error || "Ошибка")}</td></tr>`;
+        $("#generationRows").innerHTML = `<tr><td colspan="5" class="empty"><div class="empty-state"><strong>Ошибка генерации</strong><span>${escapeHtml(task.error || "Ошибка")}</span></div></td></tr>`;
       }
     }
 
@@ -1596,10 +2367,10 @@ INDEX_HTML = r"""<!doctype html>
           <td>${escapeHtml(row.generation_type || "-")}</td>
           <td>${escapeHtml(row.batch_num || "-")}</td>
         </tr>
-      `).join("") : `<tr><td colspan="6" class="empty">Нет кандидатов</td></tr>`;
+      `).join("") : `<tr><td colspan="6" class="empty"><div class="empty-state"><strong>Нет кандидатов</strong><span>Попробуйте снизить min score или указать username вручную.</span></div></td></tr>`;
       $("#telegramSkippedRows").innerHTML = data.skipped.length ? data.skipped.map((item) => `
         <tr><td class="mono">@${escapeHtml(item.username)}</td><td>${escapeHtml(item.reason)}</td></tr>
-      `).join("") : `<tr><td colspan="2" class="empty">Нет пропусков</td></tr>`;
+      `).join("") : `<tr><td colspan="2" class="empty"><div class="empty-state"><strong>Нет пропусков</strong><span>Все кандидаты прошли предварительный фильтр.</span></div></td></tr>`;
     }
 
     async function checkTelegramSelected() {
@@ -1649,6 +2420,8 @@ INDEX_HTML = r"""<!doctype html>
       $("#telegramMeta").textContent = dryRun
         ? "Preview включен; live-проверка использует только вкладку Аккаунты"
         : "Live режим: введите CHECK; основной аккаунт не используется для проверки";
+      $("#tgModeLabel").textContent = dryRun ? "dry-run preview" : "live check";
+      $("#tgConfirmState").textContent = dryRun ? "не требуется" : "требуется CHECK";
       $("#tgConfirm").disabled = dryRun;
     }
 
@@ -1683,7 +2456,7 @@ INDEX_HTML = r"""<!doctype html>
           <td>${escapeHtml(row.generation_type || "-")}</td>
           <td><button class="btn" data-channel="${escapeHtml(row.username)}" data-score="${escapeHtml(row.score)}">Выбрать</button></td>
         </tr>
-      `).join("") : `<tr><td colspan="5" class="empty">Нет available username</td></tr>`;
+      `).join("") : `<tr><td colspan="5" class="empty"><div class="empty-state"><strong>Нет available username</strong><span>Создание канала доступно только для проверенных available username.</span></div></td></tr>`;
       $$("[data-channel]").forEach((button) => button.addEventListener("click", () => selectChannel(button.dataset.channel, button.dataset.score)));
     }
 
